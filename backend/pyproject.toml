@@ -4,4 +4,9 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["langchain[google-vertexai]>=0.3.20"]
+dependencies = [
+    "anthropic>=0.49.0",
+    "dotenv>=0.9.9",
+    "langchain-anthropic>=0.3.10",
+    "langchain[google-vertexai]>=0.3.20",
+]
