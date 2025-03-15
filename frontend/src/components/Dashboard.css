@@ -1446,4 +1446,73 @@ textarea.patient-input {
 
 .patient-info-value::-webkit-scrollbar-thumb:hover {
   background: rgba(79, 255, 176, 0.5);
+}
+
+.add-new-patient-button-container {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.add-new-patient-button {
+  background: rgba(79, 255, 176, 0.2);
+  color: #4FFFB0;
+  border: 1px solid rgba(79, 255, 176, 0.4);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.add-new-patient-button:hover {
+  background: rgba(79, 255, 176, 0.3);
+}
+
+/* Style for the Assign Form to Patient modal actions */
+.assign-patient-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem; /* Add more space between buttons */
+  margin-top: 1.5rem;
+}
+
+.assign-patient-actions .action-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem; /* Make buttons more rounded */
+  min-width: 120px; /* Reduce the minimum width for buttons */
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 0 0 auto; /* Don't allow buttons to grow/shrink */
+}
+
+.assign-patient-actions .cancel-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.assign-patient-actions .cancel-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.assign-patient-actions .submit-button {
+  background: rgba(79, 255, 176, 0.2);
+  color: #4FFFB0;
+  border: 1px solid rgba(79, 255, 176, 0.4);
+}
+
+.assign-patient-actions .submit-button:hover {
+  background: rgba(79, 255, 176, 0.3);
+}
+
+.assign-patient-actions .submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 } 

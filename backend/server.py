@@ -9,6 +9,7 @@ from datetime import datetime
 import re
 import PyPDF2
 import json
+import shutil
 
 # Create the FastAPI app
 app = FastAPI()
@@ -367,6 +368,7 @@ def update_user(
 async def upload_pdf(
     file: UploadFile = File(...),
     user_id: int = Form(...),
+    patient_id: Optional[int] = Form(None),
 ):
     try:
         # Create a new database connection for this request
@@ -383,56 +385,63 @@ async def upload_pdf(
             raise HTTPException(status_code=404, detail="User not found")
         
         # Get user's full name and replace spaces with underscores
-        doctor_name = user[0].replace(' ', '_')
+        doctor_name = user['name'].replace(' ', '_')
+        
+        # Get patient name if patient_id is provided
+        patient_name = "unassigned"
+        if patient_id:
+            cursor.execute("SELECT name FROM patients WHERE id = ?", (patient_id,))
+            patient = cursor.fetchone()
+            if patient:
+                patient_name = patient['name'].replace(' ', '_')
+                print(f"Using patient name: {patient_name}")
+            else:
+                print(f"Patient with ID {patient_id} not found")
+                patient_id = None  # Reset patient_id if patient not found
+        else:
+            print("No patient_id provided")
         
         # Check if the file is a PDF
         if not file.filename.lower().endswith('.pdf'):
             conn.close()
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
-        # Get the next upload number
-        cursor.execute(
-            "SELECT COUNT(*) FROM uploaded_pdfs WHERE user_id = ?",
-            (user_id,)
-        )
-        count = cursor.fetchone()[0]
-        upload_number = count + 1
+        # Create the new filename with the required format: [original filename]_[doctor fullname]_[patient fullname]
+        original_filename = file.filename
+        filename_base, file_extension = os.path.splitext(original_filename)
+        new_filename = f"{filename_base}_{doctor_name}_{patient_name}{file_extension}"
         
-        # Create the new filename (without patient name initially)
-        new_filename = f"custom_upload{upload_number:03d}_{doctor_name}_unassigned.pdf"
+        # Make sure the filename is secure
+        new_filename = re.sub(r'[^\w\s.-]', '', new_filename)
+        new_filename = re.sub(r'\s+', '_', new_filename)
+        
         file_path = os.path.join(UPLOAD_DIR, new_filename)
         
-        print(f"Saving file to: {file_path}")
-        
-        # Read file content
-        contents = await file.read()
-        print(f"Read {len(contents)} bytes from uploaded file")
-        
-        # Write to file
+        # Save the file to disk
         with open(file_path, "wb") as f:
-            f.write(contents)
+            shutil.copyfileobj(file.file, f)
         
         # Check if the PDF is fillable
         is_fillable = is_pdf_fillable(file_path)
         print(f"PDF is fillable: {is_fillable}")
         
-        # Save the PDF information to the database
+        # Save the PDF information to the database with patient information
         cursor.execute(
             """
-            INSERT INTO uploaded_pdfs (user_id, filename, original_filename, is_fillable)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO uploaded_pdfs (user_id, filename, original_filename, is_fillable, patient_id, patient_name)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (user_id, new_filename, file.filename, is_fillable)
+            (user_id, new_filename, original_filename, is_fillable, patient_id, patient_name if patient_id else None)
         )
         conn.commit()
         
-        # Get the ID of the inserted PDF
+        # Get the ID of the newly inserted PDF
         pdf_id = cursor.lastrowid
         
         # Get the PDF information
         cursor.execute(
             """
-            SELECT id, filename, original_filename, upload_date
+            SELECT id, filename, original_filename, upload_date, patient_id, patient_name, is_fillable
             FROM uploaded_pdfs
             WHERE id = ?
             """,
@@ -446,12 +455,14 @@ async def upload_pdf(
         return {
             "message": "PDF uploaded successfully",
             "pdf": {
-                "id": pdf[0],
-                "filename": pdf[1],
-                "originalFilename": pdf[2],
-                "uploadDate": pdf[3],
-                "url": f"/uploads/{pdf[1]}",
-                "isFillable": is_fillable
+                "id": pdf['id'],
+                "filename": pdf['filename'],
+                "originalFilename": pdf['original_filename'],
+                "uploadDate": pdf['upload_date'],
+                "url": f"/uploads/{pdf['filename']}",
+                "isFillable": is_fillable,
+                "patientId": pdf['patient_id'],
+                "patientName": pdf['patient_name']
             }
         }
     except Exception as e:

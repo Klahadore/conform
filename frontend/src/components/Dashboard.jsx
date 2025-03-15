@@ -46,6 +46,7 @@ const Dashboard = ({
   const [patientAge, setPatientAge] = useState('');
   const [patientConditions, setPatientConditions] = useState('');
   const [patientMedications, setPatientMedications] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
   
   // Fetch user's PDFs on component mount
   useEffect(() => {
@@ -114,8 +115,8 @@ const Dashboard = ({
   const handleCreateForm = () => {
     // Reset the last uploaded PDF when clicking to upload a new one
     setLastUploadedPdf(null);
-    // Trigger file input click
-    fileInputRef.current.click();
+    // Instead of opening the file picker directly, show the patient assignment popup first
+    setShowPatientAssignmentPopup(true);
     scrollToTop();
   };
   
@@ -140,6 +141,11 @@ const Dashboard = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('user_id', user.id);
+      
+      // If a patient is selected, add the patient_id to the form data
+      if (selectedPatient) {
+        formData.append('patient_id', selectedPatient);
+      }
       
       console.log('Sending upload request...');
       const response = await fetch('/api/upload-pdf', {
@@ -181,21 +187,34 @@ const Dashboard = ({
         createdAt: data.pdf.uploadDate,
         pdfUrl: data.pdf.url,
         filename: data.pdf.filename,
-        originalFilename: data.pdf.originalFilename
+        originalFilename: data.pdf.originalFilename,
+        patientId: data.pdf.patientId,
+        patientName: data.pdf.patientName
       };
       
-      // Show patient assignment popup
-      setFormToEdit(newForm);
-      setShowPatientAssignmentPopup(true);
+      // Update the forms list
+      if (setForms) {
+        setForms([newForm, ...forms]);
+      }
       
+      // Show success message with patient name if assigned
+      setUploadSuccess(`PDF uploaded successfully${data.pdf.patientName ? ` and assigned to ${data.pdf.patientName}` : ''}`);
+      setTimeout(() => setUploadSuccess(''), 3000);
+      
+      // Refresh the PDFs list to update UI
+      fetchUserPdfs();
+      
+      // Reset the patient selection after successful upload
+      setSelectedPatient('');
     } catch (error) {
       console.error('Error uploading PDF:', error);
       setUploadError(`Upload failed: ${error.message}`);
       setTimeout(() => setUploadError(''), 5000);
     } finally {
       setIsUploading(false);
-      // Clear the file input
-      e.target.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
   
@@ -357,202 +376,70 @@ const Dashboard = ({
   }, [uploadSuccess]);
 
   // Function to handle patient assignment
-  const handleAssignPatient = async () => {
-    if (!formToEdit) return;
-    
-    // Check if we're using an existing patient or adding a new one
-    const patientName = newPatient.trim() ? newPatient : selectedPatient;
-    
-    if (!patientName) {
-      setUploadError('Please select or add a patient');
-      setTimeout(() => setUploadError(''), 3000);
-      return;
-    }
+  const handleAssignPatient = async (e) => {
+    e.preventDefault();
     
     try {
-      // Add a new patient via API
-      let patientId;
-      
-      if (newPatient.trim()) {
-        const response = await fetch('/api/patients', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: newPatient,
-            user_id: user.id
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to add new patient');
-        }
-        
-        const data = await response.json();
-        patientId = data.patient.id;
-        
-        // Update local patients list
-        setPatients([...patients, data.patient]);
-      } else {
-        // Find the selected patient's ID
-        const selectedPatientObj = patients.find(p => p.name === selectedPatient);
-        patientId = selectedPatientObj ? selectedPatientObj.id : null;
+      // Validate that a patient is selected
+      if (!selectedPatient) {
+        setUploadError('Please select a patient');
+        setTimeout(() => setUploadError(''), 3000);
+        return;
       }
-      
-      // Assign the patient to the PDF via API
-      const assignResponse = await fetch(`/api/pdfs/${formToEdit.id}/patient`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          patient_id: patientId
-        }),
-      });
-      
-      if (!assignResponse.ok) {
-        throw new Error('Failed to assign patient to PDF');
-      }
-      
-      // Update the form with the patient name
-      const updatedForm = {
-        ...formToEdit,
-        patientName: patientName,
-        patientId: patientId
-      };
-      
-      // Update forms list
-      if (setForms) {
-        setForms([updatedForm, ...forms.filter(form => form.id !== updatedForm.id)]);
-      }
-      
-      // Update the userPdfs array to include patient information
-      const updatedPdfs = userPdfs.map(pdf => 
-        pdf.id === formToEdit.id ? { ...pdf, patientName: patientName, patientId: patientId } : pdf
-      );
-      
-      // Update the userPdfs state with the new data
-      setUserPdfs(updatedPdfs);
-      
-      // If this was the last uploaded PDF, update it with patient info
-      if (lastUploadedPdf && lastUploadedPdf.id === formToEdit.id) {
-        setLastUploadedPdf({
-          ...lastUploadedPdf,
-          patientName: patientName,
-          patientId: patientId
-        });
-      }
-      
-      // After successfully assigning a patient, refresh the PDFs list to get updated patient info
-      await fetchUserPdfs();
       
       // Close the patient assignment popup
       setShowPatientAssignmentPopup(false);
-      setSelectedPatient('');
-      setNewPatient('');
       
-      // After successfully assigning a patient, refresh the patient list
-      fetchUserPatients();
+      // Now that we have a patient selected, open the file picker
+      fileInputRef.current.click();
       
     } catch (error) {
       console.error('Error assigning patient:', error);
-      setUploadError(`Failed to assign patient: ${error.message}`);
-      setTimeout(() => setUploadError(''), 5000);
+      setUploadError('Failed to assign patient');
+      setTimeout(() => setUploadError(''), 3000);
     }
   };
   
-  // Function to cancel patient assignment
-  const handleCancelAssignment = () => {
-    // If this was from an upload, we need to handle the canceled assignment
-    if (lastUploadedPdf && formToEdit && lastUploadedPdf.id === formToEdit.id) {
-      // Show an info message that the form wasn't assigned to a patient
-      setUploadSuccess('PDF uploaded without patient assignment');
-    }
-    
+  // Function to handle opening the Add New Patient modal from the Assign Patient modal
+  const handleOpenAddPatientModal = () => {
+    // Close the patient assignment popup
     setShowPatientAssignmentPopup(false);
-    setSelectedPatient('');
-    setNewPatient('');
-  };
-
-  const handleDeletePatient = (patientId) => {
-    setPatientToDelete(patientId);
-    setShowDeletePatientConfirm(true);
-  };
-
-  const confirmDeletePatient = async () => {
-    if (!patientToDelete) return;
     
-    try {
-      console.log(`Deleting patient with ID: ${patientToDelete}`);
-      
-      const response = await fetch(`/api/patients/${patientToDelete}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete patient');
-      }
-      
-      const data = await response.json();
-      console.log('Delete patient response:', data);
-      
-      // Remove the patient from the patients state
-      setPatients(patients.filter(patient => patient.id !== patientToDelete));
-      
-      // Close the delete confirmation and patient info popup
-      setShowDeletePatientConfirm(false);
-      setExpandedPatient(null);
-      
-      // Show success message
-      setUploadSuccess(data.message || 'Patient deleted successfully');
-      setTimeout(() => setUploadSuccess(''), 3000);
-      
-      // Refresh the PDFs list to update any references to the deleted patient
-      fetchUserPdfs();
-      
-    } catch (error) {
-      console.error('Error deleting patient:', error);
-      setUploadError(`Failed to delete patient: ${error.message}`);
-      setTimeout(() => setUploadError(''), 5000);
-    }
+    // Open the Add New Patient modal
+    setShowAddPatientModal(true);
   };
 
-  const cancelDeletePatient = () => {
-    setShowDeletePatientConfirm(false);
-    setPatientToDelete(null);
-  };
-
+  // Function to handle adding a new patient
   const handleAddPatient = async (e) => {
     e.preventDefault();
     
-    if (!newPatientName.trim()) {
-      // Show error message
-      return;
-    }
-    
     try {
-      // Convert age to number if provided
-      const ageValue = patientAge ? parseInt(patientAge, 10) : null;
+      // Validate required fields
+      if (!newPatientName.trim()) {
+        setUploadError('Patient name is required');
+        setTimeout(() => setUploadError(''), 3000);
+        return;
+      }
       
+      // Create the patient data object
+      const patientData = {
+        name: newPatientName,
+        user_id: user.id,
+        email: patientEmail || null,
+        date_of_birth: patientDob || null,
+        gender: patientGender || null,
+        age: patientAge || null,
+        conditions: patientConditions || null,
+        medications: patientMedications || null
+      };
+      
+      // Send the request to create a new patient
       const response = await fetch(`/api/user/${user.id}/patients`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          name: newPatientName,
-          email: patientEmail || null,
-          date_of_birth: patientDob || null,
-          gender: patientGender || null,
-          age: ageValue,
-          conditions: patientConditions || null,
-          medications: patientMedications || null
-        }),
+        body: JSON.stringify(patientData)
       });
       
       if (!response.ok) {
@@ -564,7 +451,7 @@ const Dashboard = ({
       // Add the new patient to the patients list
       setPatients([...patients, data.patient]);
       
-      // Reset form fields
+      // Reset the form fields
       setNewPatientName('');
       setPatientEmail('');
       setPatientDob('');
@@ -574,18 +461,24 @@ const Dashboard = ({
       setPatientMedications('');
       setSelectedFiles([]);
       
-      // Close the modal
+      // Close the Add Patient modal
       setShowAddPatientModal(false);
       
-      // Upload any selected files for this patient if needed
-      if (selectedFiles.length > 0) {
-        // Handle file uploads for the new patient
-        // This would depend on your existing file upload logic
-      }
+      // Reopen the Assign Patient modal with the newly created patient selected
+      setSelectedPatient(data.patient.id);
+      setShowPatientAssignmentPopup(true);
+      
+      // Show success message
+      setUploadSuccess('Patient added successfully');
+      setTimeout(() => setUploadSuccess(''), 3000);
+      
+      // Refresh the patients list
+      fetchUserPatients();
       
     } catch (error) {
       console.error('Error adding patient:', error);
-      // Show error message to user
+      setUploadError('Failed to add patient');
+      setTimeout(() => setUploadError(''), 3000);
     }
   };
 
@@ -1037,66 +930,57 @@ const Dashboard = ({
 
       {/* Patient Assignment Popup */}
       {showPatientAssignmentPopup && (
-        <div className="modal-overlay" onClick={handleCancelAssignment}>
-          <div className="modal-content patient-assignment-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Assign Form to a Patient</h2>
-              <button className="modal-close" onClick={handleCancelAssignment}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label htmlFor="existingPatient">Select Existing Patient:</label>
-                <select 
-                  id="existingPatient" 
-                  className="patient-select"
-                  value={selectedPatient}
-                  onChange={(e) => {
-                    setSelectedPatient(e.target.value);
-                    if (e.target.value) {
-                      setNewPatient('');
-                    }
-                  }}
-                >
-                  <option value="">-- Select a patient --</option>
-                  {patients.map(patient => (
-                    <option key={patient.id} value={patient.name}>
-                      {patient.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        <div className="modal-overlay">
+          <div className="modal-container">
+            <div className="modal-content">
+              <h2>Assign Form to Patient</h2>
+              <p>Select an existing patient or add a new one:</p>
               
-              <div className="form-group">
-                <label htmlFor="newPatient">Or Add a New Patient:</label>
-                <input 
-                  type="text" 
-                  id="newPatient" 
-                  className="patient-input"
-                  value={newPatient}
-                  onChange={(e) => {
-                    setNewPatient(e.target.value);
-                    if (e.target.value) {
-                      setSelectedPatient('');
-                    }
-                  }}
-                  placeholder="Enter patient name"
-                />
-              </div>
-              
-              <div className="patient-assignment-actions">
-                <button 
-                  className="dashboard-button secondary"
-                  onClick={handleCancelAssignment}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="dashboard-button"
-                  onClick={handleAssignPatient}
-                >
-                  Assign & Continue
-                </button>
-              </div>
+              <form onSubmit={handleAssignPatient}>
+                <div className="form-group">
+                  <label htmlFor="existingPatient">Existing Patient</label>
+                  <select
+                    id="existingPatient"
+                    value={selectedPatient}
+                    onChange={(e) => setSelectedPatient(e.target.value)}
+                    className="patient-select"
+                  >
+                    <option value="">Select a patient</option>
+                    {patients.map(patient => (
+                      <option key={patient.id} value={patient.id}>
+                        {patient.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="form-group add-new-patient-button-container">
+                  <button
+                    type="button"
+                    className="add-new-patient-button"
+                    onClick={handleOpenAddPatientModal}
+                  >
+                    + Add New Patient
+                  </button>
+                </div>
+                
+                <div className="assign-patient-actions">
+                  <button
+                    type="button"
+                    className="action-button cancel-button"
+                    onClick={() => setShowPatientAssignmentPopup(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="action-button submit-button"
+                    disabled={!selectedPatient}
+                  >
+                    Upload
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

@@ -265,6 +265,12 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     }
   };
 
+  const handleClose = () => {
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   return (
     <div className="app">
       <div className="sparkle"></div>
@@ -311,26 +317,8 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
         </div>
       </header>
 
-      <main className="form-editor-main">
-        <div className="form-editor-container">
-          <div className="form-editor-header">
-            <h1>Form Editor</h1>
-            <div className="form-editor-actions header-actions">
-              <button 
-                className="form-editor-button secondary"
-                onClick={onCancel}
-              >
-                Cancel
-              </button>
-              <button 
-                className="form-editor-button"
-                onClick={handleSave}
-              >
-                Save Form
-              </button>
-            </div>
-          </div>
-
+      <main className="form-editor-page">
+        <div className="form-editor-single-panel">
           <div className="form-editor-content">
             <div className="form-elements-panel">
               <h2>Original Fillable Form</h2>
@@ -384,128 +372,113 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
               />
             </div>
           </div>
-          
-          {showElementForm && (
-            <div className="element-form-overlay">
-              <div className="element-form">
-                <h3>{editingIndex >= 0 ? 'Edit Element' : 'Add New Element'}</h3>
-                
-                <div className="element-form-field">
-                  <label>Element Type</label>
-                  <select 
-                    value={currentElement.type}
-                    onChange={(e) => setCurrentElement({...currentElement, type: e.target.value})}
-                  >
-                    <option value="text">Text Input</option>
-                    <option value="textarea">Text Area</option>
-                    <option value="select">Dropdown</option>
-                    <option value="checkbox">Checkbox Group</option>
-                    <option value="radio">Radio Group</option>
-                  </select>
-                </div>
-                
-                <div className="element-form-field">
-                  <label>Label</label>
-                  <input 
-                    type="text"
-                    value={currentElement.label}
-                    onChange={(e) => setCurrentElement({...currentElement, label: e.target.value})}
-                    placeholder="Enter field label"
-                  />
-                </div>
-                
-                {(currentElement.type === 'text' || currentElement.type === 'textarea') && (
-                  <div className="element-form-field">
-                    <label>Placeholder</label>
-                    <input 
-                      type="text"
-                      value={currentElement.placeholder}
-                      onChange={(e) => setCurrentElement({...currentElement, placeholder: e.target.value})}
-                      placeholder="Enter placeholder text"
-                    />
-                  </div>
-                )}
-                
-                {(currentElement.type === 'select' || currentElement.type === 'checkbox' || currentElement.type === 'radio') && (
-                  <div className="element-form-field">
-                    <label>Options</label>
-                    <div className="options-container">
-                      {currentElement.options.map((option, index) => (
-                        <div key={index} className="option-item">
-                          <span>{option}</span>
-                          <button 
-                            type="button"
-                            onClick={() => handleRemoveOption(index)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="add-option-container">
-                      <input 
-                        type="text"
-                        value={newOption}
-                        onChange={(e) => setNewOption(e.target.value)}
-                        placeholder="Enter option text"
-                      />
+        </div>
+      </main>
+
+      {showElementForm && (
+        <div className="element-form-overlay">
+          <div className="element-form">
+            <h3>{editingIndex >= 0 ? 'Edit Element' : 'Add New Element'}</h3>
+            
+            <div className="element-form-field">
+              <label>Element Type</label>
+              <select 
+                value={currentElement.type}
+                onChange={(e) => setCurrentElement({...currentElement, type: e.target.value})}
+              >
+                <option value="text">Text Input</option>
+                <option value="textarea">Text Area</option>
+                <option value="select">Dropdown</option>
+                <option value="checkbox">Checkbox Group</option>
+                <option value="radio">Radio Group</option>
+              </select>
+            </div>
+            
+            <div className="element-form-field">
+              <label>Label</label>
+              <input 
+                type="text"
+                value={currentElement.label}
+                onChange={(e) => setCurrentElement({...currentElement, label: e.target.value})}
+                placeholder="Enter field label"
+              />
+            </div>
+            
+            {(currentElement.type === 'text' || currentElement.type === 'textarea') && (
+              <div className="element-form-field">
+                <label>Placeholder</label>
+                <input 
+                  type="text"
+                  value={currentElement.placeholder}
+                  onChange={(e) => setCurrentElement({...currentElement, placeholder: e.target.value})}
+                  placeholder="Enter placeholder text"
+                />
+              </div>
+            )}
+            
+            {(currentElement.type === 'select' || currentElement.type === 'checkbox' || currentElement.type === 'radio') && (
+              <div className="element-form-field">
+                <label>Options</label>
+                <div className="options-container">
+                  {currentElement.options.map((option, index) => (
+                    <div key={index} className="option-item">
+                      <span>{option}</span>
                       <button 
                         type="button"
-                        onClick={handleAddOption}
+                        onClick={() => handleRemoveOption(index)}
                       >
-                        Add
+                        ×
                       </button>
                     </div>
-                  </div>
-                )}
-                
-                <div className="element-form-field checkbox-field">
-                  <label>
-                    <input 
-                      type="checkbox"
-                      checked={currentElement.required}
-                      onChange={(e) => setCurrentElement({...currentElement, required: e.target.checked})}
-                    />
-                    Required Field
-                  </label>
+                  ))}
                 </div>
-                
-                <div className="element-form-actions">
+                <div className="add-option-container">
+                  <input 
+                    type="text"
+                    value={newOption}
+                    onChange={(e) => setNewOption(e.target.value)}
+                    placeholder="Enter option text"
+                  />
                   <button 
-                    type="button" 
-                    className="cancel-button"
-                    onClick={() => setShowElementForm(false)}
+                    type="button"
+                    onClick={handleAddOption}
                   >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    className="save-button"
-                    onClick={handleSaveElement}
-                  >
-                    Save Element
+                    Add
                   </button>
                 </div>
               </div>
+            )}
+            
+            <div className="element-form-field checkbox-field">
+              <label>
+                <input 
+                  type="checkbox"
+                  checked={currentElement.required}
+                  onChange={(e) => setCurrentElement({...currentElement, required: e.target.checked})}
+                />
+                Required Field
+              </label>
             </div>
-          )}
-
-          <div className="form-editor-actions">
-            <button 
-              className="form-editor-button secondary"
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
-            <button 
-              className="form-editor-button"
-              onClick={handleSave}
-            >
-              Save Form
-            </button>
+            
+            <div className="element-form-actions">
+              <button 
+                type="button" 
+                className="cancel-button"
+                onClick={() => setShowElementForm(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="save-button"
+                onClick={handleSaveElement}
+              >
+                Save Element
+              </button>
+            </div>
           </div>
         </div>
-      </main>
+      )}
 
       <footer className="footer">
         <div className="footer-content">

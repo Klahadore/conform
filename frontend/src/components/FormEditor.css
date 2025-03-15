@@ -1,27 +1,46 @@
 .form-editor-main {
-  max-width: 100%;
-  margin: 0;
-  padding: 8rem 1.5rem 2rem;
-  position: relative;
-  z-index: 10;
+  background: #3B2B6D;
+  border-radius: 1rem;
+  width: 95%;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 .form-editor-container {
-  background: linear-gradient(135deg, #3B2B6D 0%, #241656 100%);
-  border-radius: 1rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 2rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
 }
 
 .form-editor-header {
+  display: none;
+}
+
+.form-editor-content {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 1.5rem;
+  position: relative;
+  min-height: 600px;
+  padding-top: 1rem;
+}
+
+.form-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .form-editor-header h1 {
@@ -35,24 +54,12 @@
   gap: 1rem;
 }
 
-.form-editor-content {
-  display: flex;
-  background: rgba(59, 43, 109, 0.7);
-  border-radius: 1rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  min-height: 600px;
-}
-
 .form-elements-panel,
 .form-preview-panel {
   flex: 1;
-  padding: 1.5rem;
+  padding: 2rem;
   overflow-y: auto;
-  max-height: 80vh;
-  position: relative;
+  height: 100%;
 }
 
 .form-elements-panel {
@@ -436,12 +443,6 @@
 }
 
 @media (max-width: 768px) {
-  .form-editor-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-  
   .form-editor-content {
     flex-direction: column;
   }
@@ -475,7 +476,7 @@
   border-top-right-radius: 0.5rem;
 }
 
-/* Update the form-editor-content to use a single panel with divider */
+/* Add a divider between the two sections */
 .form-editor-content::after {
   content: '';
   position: absolute;
@@ -511,4 +512,82 @@
   border-radius: 0.75rem;
   margin-bottom: 1.5rem;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Add styles for the single panel layout */
+.form-editor-page {
+  padding: 6rem 2rem 2rem;
+  min-height: calc(100vh - 80px - 300px);
+  background: transparent;
+}
+
+.form-editor-single-panel {
+  background: #3B2B6D;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.form-editor-content {
+  display: flex;
+  position: relative;
+  min-height: 600px;
+}
+
+/* Add a divider between the two sections */
+.form-editor-content::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  z-index: 1;
+}
+
+.form-elements-panel,
+.form-preview-panel {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.form-editor-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-editor-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-editor-button:hover {
+  background: #3ee69f;
+}
+
+.form-editor-button.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.form-editor-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
 } 
