@@ -745,48 +745,40 @@ def delete_patient(patient_id: int):
     try:
         # Create a new database connection for this request
         conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # First, check if the patient exists
-        cursor.execute(
-            "SELECT name, user_id FROM patients WHERE id = ?",
-            (patient_id,)
-        )
-        patient_info = cursor.fetchone()
+        # First, get the patient name for the response message
+        cursor.execute("SELECT name FROM patients WHERE id = ?", (patient_id,))
+        patient = cursor.fetchone()
         
-        if not patient_info:
+        if not patient:
             conn.close()
             raise HTTPException(status_code=404, detail="Patient not found")
         
-        patient_name, user_id = patient_info
-        print(f"Deleting patient: {patient_name} (ID: {patient_id}) for user {user_id}")
+        patient_name = patient['name']
         
-        # Check if patient_name column exists in uploaded_pdfs table
-        cursor.execute("PRAGMA table_info(uploaded_pdfs)")
-        columns = cursor.fetchall()
-        column_names = [column[1] for column in columns]
+        # Get all PDFs associated with this patient
+        cursor.execute("SELECT id, filename FROM uploaded_pdfs WHERE patient_id = ?", (patient_id,))
+        associated_pdfs = cursor.fetchall()
         
-        # Update PDFs that reference this patient
-        if 'patient_id' in column_names:
-            cursor.execute(
-                "UPDATE uploaded_pdfs SET patient_id = NULL WHERE patient_id = ?",
-                (patient_id,)
-            )
-            print(f"Updated PDFs to remove patient_id references to patient {patient_id}")
+        # Delete the patient's PDFs from the filesystem
+        for pdf in associated_pdfs:
+            pdf_path = os.path.join(UPLOAD_DIR, pdf['filename'])
+            try:
+                if os.path.exists(pdf_path):
+                    os.remove(pdf_path)
+                    print(f"Deleted PDF file: {pdf_path}")
+            except Exception as e:
+                print(f"Error deleting PDF file {pdf_path}: {str(e)}")
         
-        # If patient_name column exists, update it too
-        if 'patient_name' in column_names:
-            cursor.execute(
-                "UPDATE uploaded_pdfs SET patient_name = NULL WHERE patient_name = ? AND user_id = ?",
-                (patient_name, user_id)
-            )
-            print(f"Updated PDFs to remove patient_name references to patient {patient_name}")
+        # Delete the patient's PDFs from the database
+        cursor.execute("DELETE FROM uploaded_pdfs WHERE patient_id = ?", (patient_id,))
+        deleted_pdfs_count = cursor.rowcount
+        print(f"Deleted {deleted_pdfs_count} PDFs associated with patient {patient_id}")
         
-        # Delete the patient record
-        cursor.execute(
-            "DELETE FROM patients WHERE id = ?",
-            (patient_id,)
-        )
+        # Now delete the patient
+        cursor.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
         
         affected_rows = cursor.rowcount
         print(f"Deleted patient {patient_id}, affected rows: {affected_rows}")
@@ -795,7 +787,11 @@ def delete_patient(patient_id: int):
         conn.commit()
         conn.close()
         
-        return {"success": True, "message": f"Patient '{patient_name}' deleted successfully"}
+        return {
+            "success": True, 
+            "message": f"Patient '{patient_name}' deleted successfully",
+            "deletedPdfsCount": deleted_pdfs_count
+        }
     except Exception as e:
         # Detailed error logging
         import traceback
@@ -1148,6 +1144,66 @@ async def create_healthcare_template(system_id: int, request: Request):
             conn.close()
         print(f"Error creating healthcare template: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create healthcare template: {str(e)}")
+
+# Get files for a specific patient
+@app.get("/api/patient/{patient_id}/files")
+def get_patient_files(patient_id: int):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # First check if the patient exists
+        cursor.execute("SELECT name FROM patients WHERE id = ?", (patient_id,))
+        patient = cursor.fetchone()
+        
+        if not patient:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Patient not found")
+        
+        patient_name = patient['name']
+        
+        # Get all PDFs associated with this patient
+        cursor.execute("""
+            SELECT id, filename, original_filename 
+            FROM uploaded_pdfs 
+            WHERE patient_id = ?
+        """, (patient_id,))
+        
+        files = []
+        for row in cursor.fetchall():
+            files.append({
+                "id": row['id'],
+                "name": row['original_filename'],
+                "filename": row['filename'],
+                "url": f"/uploads/{row['filename']}"
+            })
+        
+        # If no files found with patient_id, try to find by filename pattern
+        if not files:
+            cursor.execute("SELECT id, filename, original_filename FROM uploaded_pdfs")
+            all_pdfs = cursor.fetchall()
+            
+            # Extract first and last name for matching
+            name_parts = patient_name.split()
+            if len(name_parts) > 0:
+                for row in all_pdfs:
+                    # Check if filename contains patient name
+                    if any(part.lower() in row['filename'].lower() for part in name_parts):
+                        files.append({
+                            "id": row['id'],
+                            "name": row['original_filename'],
+                            "filename": row['filename'],
+                            "url": f"/uploads/{row['filename']}"
+                        })
+        
+        conn.close()
+        return {"files": files}
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"Error fetching patient files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch patient files: {str(e)}")
 
 # Run the server with uvicorn
 if __name__ == "__main__":

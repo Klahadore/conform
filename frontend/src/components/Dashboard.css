@@ -1515,4 +1515,41 @@ textarea.patient-input {
 .assign-patient-actions .submit-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Add this to your Dashboard.css file */
+.redirect-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  color: white;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.redirect-message {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #4FFFB0;
+}
+
+.redirect-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #4FFFB0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 } 

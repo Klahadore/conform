@@ -177,19 +177,25 @@ const Dashboard = ({
       
       console.log('Upload successful:', data);
       
+      console.log("Upload response data:", data);
+      console.log("PDF URL from server:", data.pdf.url);
+      
       // Save the uploaded PDF
       setLastUploadedPdf(data.pdf);
       
-      // Create a form object from the uploaded PDF
+      // Create a form object from the uploaded PDF with the correct URL format
       const newForm = {
         id: data.pdf.id,
         title: data.pdf.originalFilename.replace('.pdf', ''),
         createdAt: data.pdf.uploadDate,
-        pdfUrl: data.pdf.url,
+        // Make sure the URL is properly formatted
+        pdfUrl: data.pdf.url.startsWith('/') ? data.pdf.url : `/uploads/${data.pdf.filename}`,
         filename: data.pdf.filename,
         originalFilename: data.pdf.originalFilename,
         patientId: data.pdf.patientId,
-        patientName: data.pdf.patientName
+        patientName: data.pdf.patientName,
+        // Add a flag to indicate this is a newly uploaded form
+        justUploaded: true
       };
       
       // Update the forms list
@@ -199,13 +205,22 @@ const Dashboard = ({
       
       // Show success message with patient name if assigned
       setUploadSuccess(`PDF uploaded successfully${data.pdf.patientName ? ` and assigned to ${data.pdf.patientName}` : ''}`);
-      setTimeout(() => setUploadSuccess(''), 3000);
       
-      // Refresh the PDFs list to update UI
-      fetchUserPdfs();
+      // Set the form to be edited directly with the data we already have
+      setFormToEdit(newForm);
       
-      // Reset the patient selection after successful upload
-      setSelectedPatient('');
+      // Show the Form Editor
+      setShowFormEditor(true);
+      
+      // Close any open modals
+      setShowAllForms(false);
+      setExpandedPatient(null);
+      
+      // Scroll to top for better user experience
+      scrollToTop();
+      
+      console.log("Form object being passed to FormEditor:", newForm);
+      
     } catch (error) {
       console.error('Error uploading PDF:', error);
       setUploadError(`Upload failed: ${error.message}`);

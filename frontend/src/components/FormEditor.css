@@ -476,7 +476,7 @@
   border-top-right-radius: 0.5rem;
 }
 
-/* Add a divider between the two sections */
+/* Remove the divider between the two sections */
 .form-editor-content::after {
   content: '';
   position: absolute;
@@ -486,6 +486,7 @@
   width: 1px;
   background: rgba(255, 255, 255, 0.2);
   z-index: 1;
+  display: none; /* Hide the divider */
 }
 
 .generate-form-button {

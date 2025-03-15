@@ -321,55 +321,9 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
         <div className="form-editor-single-panel">
           <div className="form-editor-content">
             <div className="form-elements-panel">
-              <h2>Original Fillable Form</h2>
-              
-              {formElements.length === 0 ? (
-                <div className="empty-elements">
-                  <p>No elements added yet. Click the button below to add your first element.</p>
-                </div>
-              ) : (
-                <div className="form-elements-list">
-                  {formElements.map((element, index) => (
-                    <div key={index} className="form-element-item">
-                      <div className="element-info">
-                        <span className="element-type">{element.type}</span>
-                        <span className="element-label">{element.label}</span>
-                        {element.required && <span className="element-required">Required</span>}
-                      </div>
-                      <div className="element-actions">
-                        <button 
-                          className="element-action-button"
-                          onClick={() => handleEditElement(index)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="element-action-button"
-                          onClick={() => handleDeleteElement(index)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              <button 
-                className="add-element-button"
-                onClick={handleAddElement}
-              >
-                Add Element
-              </button>
             </div>
             
             <div className="form-preview-panel">
-              <h2>Intelligent Form Editor</h2>
-              
-              <FormFieldNavigator 
-                formHtml={generatedFormHtml}
-                onSubmit={handleFormSubmit}
-              />
             </div>
           </div>
         </div>
