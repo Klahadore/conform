@@ -120,7 +120,7 @@ if __name__ == "__main__":
     # Example usage
     from chain1 import chain1
     import pathlib
-    pdf_form = pathlib.Path("../test_files/sterilization_form.pdf")
+    # pdf_form = pathlib.Path("../test_files/sterilization_form.pdf")
 
     mock_coordinates = """
     1: Page 1, I have asked for and received information about sterilization from Doctor or Clinic, (30, 664)
@@ -157,8 +157,8 @@ if __name__ == "__main__":
     32: Page 1, Physician's Signature, (312, 45)
     33: Page 1, Date Physician Signed, (493, 47)
     """
-    response = chain1(pdf_form, mock_coordinates)
-    print(response)
+    # response = chain1(pdf_form, mock_coordinates)
+    # print(response)
 
     # Example context data
     context_data = {
@@ -188,8 +188,10 @@ if __name__ == "__main__":
         }
     }
 
+    template_path = Path('../test_files/sterilization_template.html')
+    template_text = template_path.read_text()
     # Generate enhanced form
-    enhanced_html = enhance_form_with_context(response, context_data)
+    enhanced_html = enhance_form_with_context(template_text, context_data)
 
     print("______ ENHANCED HTML ________")
     print(enhanced_html)

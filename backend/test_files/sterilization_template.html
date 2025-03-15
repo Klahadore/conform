@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Consent for Sterilization</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            .form-step {
+                display: none;
+                opacity: 0;
+                transform: translateY(20px);
+                transition:
+                    opacity 0.5s ease,
+                    transform 0.5s ease;
+            }
+
+            .form-step.active {
+                display: block;
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .progress-bar {
+                height: 0.5rem;
+                background: linear-gradient(to right, #3b82f6, #10b981);
+                transition: width 0.5s ease;
+                border-radius: 0 0.25rem 0.25rem 0;
+            }
+
+            .nav-btn {
+                transition: all 0.3s ease;
+            }
+
+            .nav-btn:hover {
+                transform: translateY(-2px);
+            }
+
+            body {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            input,
+            textarea,
+            select {
+                transition:
+                    border-color 0.3s ease,
+                    box-shadow 0.3s ease;
+            }
+
+            input:focus,
+            textarea:focus,
+            select:focus {
+                outline: none;
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+            }
+
+            .checkbox-item {
+                transition: background-color 0.2s ease;
+            }
+
+            .checkbox-item:hover {
+                background-color: #f3f4f6;
+            }
+
+            .legal-context {
+                background-color: #eff6ff;
+                border-left: 4px solid #3b82f6;
+                padding: 1rem;
+                margin: 1rem 0;
+                border-radius: 0.5rem;
+            }
+
+            .biological-context {
+                background-color: #f5f3ff;
+                border-left: 4px solid #8b5cf6;
+                padding: 1rem;
+                margin: 1rem 0;
+                border-radius: 0.5rem;
+            }
+        </style>
+    </head>
+    <body class="bg-gray-50">
+        <!-- Progress Bar -->
+        <div class="fixed top-0 left-0 right-0 z-50 bg-gray-200">
+            <div id="progressBar" class="progress-bar w-0"></div>
+        </div>
+
+        <div class="container max-w-3xl mx-auto px-4 py-16 md:py-24">
+            <!-- Form Header -->
+            <div class="mb-8 text-center">
+                <h1 class="text-3xl font-bold text-gray-800">
+                    CONSENT FOR STERILIZATION
+                </h1>
+            </div>
+
+            <!-- Typeform-style Form -->
+            <form
+                id="sterilizationForm"
+                class="bg-white rounded-xl shadow-lg overflow-hidden"
+            >
+                <!-- Step 1: Introduction -->
+                <div id="step-1" class="form-step active p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+                            Important Information
+                        </h2>
+                        <div class="bg-blue-100 p-5 rounded-lg mb-6">
+                            <p class="text-blue-800">
+                                This form is used to document your informed
+                                consent for a permanent sterilization procedure.
+                                It's important to understand that sterilization
+                                is considered permanent and generally not
+                                reversible. Please read all information
+                                carefully before signing.
+                            </p>
+                        </div>
+
+                        <div class="legal-context">
+                            <h3 class="font-semibold text-blue-800">
+                                Legal Implications
+                            </h3>
+                            <p class="text-blue-800">
+                                Sterilization is a legally binding medical
+                                decision. The law requires a 30-day waiting
+                                period between consenting and the procedure to
+                                ensure you have adequate time for consideration.
+                                You have the legal right to withdraw consent at
+                                any time before the procedure without any
+                                penalty or loss of benefits.
+                            </p>
+                            <p class="text-blue-800 mt-2">
+                                Federal regulations protect individuals from
+                                coercion regarding sterilization decisions,
+                                particularly for those receiving public
+                                assistance or benefits.
+                            </p>
+                        </div>
+
+                        <div class="biological-context mt-4">
+                            <h3 class="font-semibold text-purple-800">
+                                Biological Implications
+                            </h3>
+                            <p class="text-purple-800">
+                                Sterilization permanently prevents your ability
+                                to have biological children by physically
+                                blocking or cutting the pathways that allow eggs
+                                or sperm to meet for fertilization. While some
+                                procedures may be surgically reversible in
+                                certain cases, reversal success rates vary
+                                greatly and decrease over time. Even with
+                                attempted reversal, many people never regain
+                                fertility.
+                            </p>
+                            <p class="text-purple-800 mt-2">
+                                Sterilization does not affect hormone
+                                production, sexual function, or protect against
+                                sexually transmitted infections.
+                            </p>
+                        </div>
+
+                        <div
+                            class="border-2 border-red-300 p-5 bg-red-50 rounded-lg mt-6"
+                        >
+                            <p class="font-bold text-center text-red-800">
+                                YOUR DECISION AT ANY TIME NOT TO BE STERILIZED
+                                WILL NOT RESULT IN THE WITHDRAWAL OR WITHHOLDING
+                                OF ANY BENEFITS PROVIDED BY PROGRAMS OR PROJECTS
+                                RECEIVING FEDERAL FUNDS.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Begin
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Doctor/Clinic Information -->
+                <div id="step-2" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Who provided information about sterilization?
+                        </h2>
+
+                        <div class="legal-context">
+                            <h3 class="font-semibold text-blue-800">
+                                Legal Requirement
+                            </h3>
+                            <p class="text-blue-800">
+                                Federal regulations require documentation of the
+                                medical professional who counseled you about
+                                sterilization. This ensures you received proper
+                                information from a qualified healthcare provider
+                                before making your decision.
+                            </p>
+                        </div>
+
+                        <p class="mb-4 mt-4">
+                            I have asked for and received information about
+                            sterilization from:
+                        </p>
+                        <input
+                            type="text"
+                            id="1"
+                            class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            placeholder="Your doctor or clinic name"
+                            required
+                        />
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Type of Sterilization -->
+                <div id="step-3" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            What type of sterilization procedure will you have?
+                        </h2>
+
+                        <div class="biological-context">
+                            <h3 class="font-semibold text-purple-800">
+                                Types of Sterilization Procedures
+                            </h3>
+                            <p class="text-purple-800 mb-2">
+                                <strong>For people with ovaries/uterus:</strong>
+                            </p>
+                            <ul class="list-disc ml-5 text-purple-800">
+                                <li>
+                                    <strong>Tubal ligation:</strong> Fallopian
+                                    tubes are cut, tied, or blocked to prevent
+                                    eggs from reaching sperm
+                                </li>
+                                <li>
+                                    <strong>Bilateral salpingectomy:</strong>
+                                    Complete removal of both fallopian tubes
+                                </li>
+                                <li>
+                                    <strong>Hysterectomy:</strong> Removal of
+                                    the uterus (may or may not include ovary
+                                    removal)
+                                </li>
+                            </ul>
+
+                            <p class="text-purple-800 mt-3 mb-2">
+                                <strong>For people with testes:</strong>
+                            </p>
+                            <ul class="list-disc ml-5 text-purple-800">
+                                <li>
+                                    <strong>Vasectomy:</strong> The vas deferens
+                                    (tubes that carry sperm) are cut and sealed
+                                </li>
+                            </ul>
+
+                            <p class="text-purple-800 mt-3">
+                                Each procedure has different recovery times,
+                                effectiveness rates, and potential side effects
+                                that your doctor should discuss with you.
+                            </p>
+                        </div>
+
+                        <div class="bg-blue-100 p-4 mt-6 mb-6 rounded-lg">
+                            <p class="text-blue-800">
+                                Sterilization is a permanent procedure to
+                                prevent pregnancy or fathering children. It is
+                                considered irreversible.
+                            </p>
+                        </div>
+
+                        <p class="mb-6">
+                            I understand that the sterilization must be
+                            considered
+                            <span class="font-bold"
+                                >PERMANENT AND NOT REVERSIBLE</span
+                            >. I have decided that I do not want to become
+                            pregnant, bear children or father children.
+                        </p>
+
+                        <p class="mb-6">
+                            I was told about other temporary birth control
+                            methods that would allow me to have children later,
+                            but I have chosen sterilization instead.
+                        </p>
+
+                        <div class="legal-context">
+                            <h3 class="font-semibold text-blue-800">
+                                Alternative Methods
+                            </h3>
+                            <p class="text-blue-800">
+                                Legally, your healthcare provider must inform
+                                you about reversible contraceptive options
+                                before sterilization. These include: hormonal
+                                methods (pills, patches, rings, injections),
+                                IUDs, barrier methods (condoms, diaphragms), and
+                                fertility awareness methods.
+                            </p>
+                        </div>
+
+                        <p class="mb-4 mt-4">
+                            I will be sterilized by an operation called:
+                        </p>
+                        <input
+                            type="text"
+                            id="2"
+                            class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            placeholder="Type of operation (your doctor will explain)"
+                            required
+                        />
+
+                        <div class="bg-blue-100 p-4 mt-6 rounded-lg">
+                            <p class="text-blue-800">
+                                Common sterilization procedures include tubal
+                                ligation (for women) or vasectomy (for men).
+                                Your doctor should explain the specific
+                                procedure, risks, and benefits to you.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 4: Personal Information -->
+                <div id="step-4" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Your Personal Information
+                        </h2>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Age Requirement
+                            </h3>
+                            <p class="text-blue-800">
+                                Federal regulations require that patients be at
+                                least 21 years old at the time of consent for
+                                sterilization. This age requirement is designed
+                                to ensure individuals have reached full legal
+                                adulthood and have had adequate time to consider
+                                their reproductive choices.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="3"
+                                class="block text-lg font-medium mb-2"
+                                >Your date of birth (must be at least 21 years
+                                old):</label
+                            >
+                            <input
+                                type="date"
+                                id="3"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                required
+                            />
+                        </div>
+
+                        <div class="mb-4">
+                            <label
+                                for="4"
+                                class="block text-lg font-medium mb-2"
+                                >Your full legal name:</label
+                            >
+                            <input
+                                type="text"
+                                id="4"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                placeholder="Your full name"
+                                required
+                            />
+                        </div>
+
+                        <div class="legal-context mt-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Waiting Period
+                            </h3>
+                            <p class="text-blue-800">
+                                The mandated 30-day waiting period serves as a
+                                "cooling-off" period to ensure your decision is
+                                not made under pressure, coercion, or during a
+                                stressful event. This waiting period can only be
+                                waived in specific circumstances such as
+                                premature delivery or emergency abdominal
+                                surgery.
+                            </p>
+                        </div>
+
+                        <p class="mt-6">
+                            I understand that I must wait at least 30 days after
+                            signing this form before the procedure can be done.
+                            I can change my mind at any time.
+                        </p>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 5: Consent Details -->
+                <div id="step-5" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Your Consent Details
+                        </h2>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Informed Consent
+                            </h3>
+                            <p class="text-blue-800">
+                                Providing informed consent means you understand
+                                and freely agree to the procedure after being
+                                fully informed of its nature, consequences,
+                                risks, benefits, and alternatives. Your
+                                signature on this form represents your legal
+                                authorization for the procedure and confirms you
+                                were not coerced.
+                            </p>
+                        </div>
+
+                        <div class="biological-context mb-6">
+                            <h3 class="font-semibold text-purple-800">
+                                Biological Effectiveness
+                            </h3>
+                            <p class="text-purple-800">
+                                While sterilization procedures are highly
+                                effective (99+% for preventing pregnancy), no
+                                method is 100% guaranteed. There is a small
+                                chance (typically less than 1%) that the
+                                reproductive pathways could reconnect naturally
+                                over time, which could result in an unintended
+                                pregnancy. This is why follow-up appointments
+                                and confirmatory tests may be recommended.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="5"
+                                class="block text-lg font-medium mb-2"
+                                >I consent to be sterilized by (doctor or clinic
+                                name):</label
+                            >
+                            <input
+                                type="text"
+                                id="5"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                required
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="6"
+                                class="block text-lg font-medium mb-2"
+                                >Using the procedure called:</label
+                            >
+                            <input
+                                type="text"
+                                id="6"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                required
+                            />
+                        </div>
+
+                        <div class="legal-context mb-4">
+                            <h3 class="font-semibold text-blue-800">
+                                Expiration of Consent
+                            </h3>
+                            <p class="text-blue-800">
+                                Your consent for sterilization is legally valid
+                                for 180 days (approximately 6 months) from the
+                                date you sign this form. If the procedure is not
+                                performed within this timeframe, a new consent
+                                process must be completed. This ensures your
+                                decision remains current and reflects your
+                                present wishes.
+                            </p>
+                        </div>
+
+                        <p class="text-gray-700">
+                            I understand my consent expires 180 days from the
+                            date I sign this form.
+                        </p>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 6: Your Signature -->
+                <div id="step-6" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Your Signature
+                        </h2>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Legal Significance of Signature
+                            </h3>
+                            <p class="text-blue-800">
+                                By signing this form, you are creating a legally
+                                binding document that confirms you:
+                            </p>
+                            <ul class="list-disc ml-5 text-blue-800">
+                                <li>
+                                    Have been informed about the permanent
+                                    nature of sterilization
+                                </li>
+                                <li>
+                                    Understand the risks, benefits, and
+                                    alternatives
+                                </li>
+                                <li>
+                                    Are making this decision voluntarily without
+                                    coercion
+                                </li>
+                                <li>
+                                    Have had all your questions answered
+                                    satisfactorily
+                                </li>
+                            </ul>
+                            <p class="text-blue-800 mt-2">
+                                Your signature will be used as evidence of your
+                                informed consent should any questions arise
+                                later.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="7"
+                                class="block text-lg font-medium mb-2"
+                                >My signature:</label
+                            >
+                            <input
+                                type="text"
+                                id="7"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                required
+                            />
+                        </div>
+
+                        <div class="mb-4">
+                            <label
+                                for="8"
+                                class="block text-lg font-medium mb-2"
+                                >Today's date:</label
+                            >
+                            <input
+                                type="date"
+                                id="8"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 7: Optional Demographics -->
+                <div id="step-7" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Optional Demographic Information
+                        </h2>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Purpose of Demographic Collection
+                            </h3>
+                            <p class="text-blue-800">
+                                This demographic information is collected to
+                                monitor healthcare equity and access patterns.
+                                Federal regulations require healthcare
+                                facilities to collect this data for statistical
+                                purposes, but your individual information
+                                remains protected under privacy laws. Providing
+                                this information is optional and does not affect
+                                your care or procedure.
+                            </p>
+                        </div>
+
+                        <div class="bg-blue-100 p-4 mb-6 rounded-lg">
+                            <p class="text-blue-800">
+                                This demographic information is collected for
+                                statistical purposes only and does not affect
+                                your care. This section is optional.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <p class="text-lg font-medium mb-3">Ethnicity:</p>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="9"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="9" class="text-lg"
+                                    >Hispanic or Latino</label
+                                >
+                            </div>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="10"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="10" class="text-lg"
+                                    >Not Hispanic or Latino</label
+                                >
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <p class="text-lg font-medium mb-3">
+                                Race (mark one or more):
+                            </p>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="11"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="11" class="text-lg"
+                                    >American Indian or Alaska Native</label
+                                >
+                            </div>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="12"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="12" class="text-lg">Asian</label>
+                            </div>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="13"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="13" class="text-lg"
+                                    >Black or African American</label
+                                >
+                            </div>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="14"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="14" class="text-lg"
+                                    >Native Hawaiian or Pacific Islander</label
+                                >
+                            </div>
+                            <div
+                                class="checkbox-item flex items-center p-3 rounded-lg"
+                            >
+                                <input
+                                    type="checkbox"
+                                    id="15"
+                                    class="w-5 h-5 mr-3"
+                                />
+                                <label for="15" class="text-lg">White</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 8: Interpreter Information -->
+                <div id="step-8" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Interpreter Information
+                        </h2>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Language Access Rights
+                            </h3>
+                            <p class="text-blue-800">
+                                Under federal law, patients with limited English
+                                proficiency have the right to receive
+                                information in a language they understand. The
+                                use of a qualified medical interpreter ensures
+                                you fully understand the permanent nature,
+                                risks, and benefits of sterilization before
+                                providing consent. This documentation protects
+                                both your rights and the healthcare provider's
+                                legal obligations.
+                            </p>
+                        </div>
+
+                        <div class="bg-blue-100 p-4 mb-6 rounded-lg">
+                            <p class="text-blue-800">
+                                This section is only needed if an interpreter
+                                was used to explain this form to the patient.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <p class="text-lg font-medium mb-3">
+                                Was an interpreter used to explain this form?
+                            </p>
+                            <div class="flex items-center p-3">
+                                <input
+                                    type="radio"
+                                    id="interpreterYes"
+                                    name="interpreterUsed"
+                                    class="w-5 h-5 mr-3"
+                                    onchange="toggleInterpreterSection(true)"
+                                />
+                                <label for="interpreterYes" class="text-lg"
+                                    >Yes</label
+                                >
+                            </div>
+                            <div class="flex items-center p-3">
+                                <input
+                                    type="radio"
+                                    id="interpreterNo"
+                                    name="interpreterUsed"
+                                    class="w-5 h-5 mr-3"
+                                    onchange="toggleInterpreterSection(false)"
+                                    checked
+                                />
+                                <label for="interpreterNo" class="text-lg"
+                                    >No</label
+                                >
+                            </div>
+                        </div>
+
+                        <div id="interpreterFields" class="hidden space-y-6">
+                            <p>
+                                I have translated the information and advice
+                                presented to the individual by the person
+                                obtaining this consent. I have also read the
+                                consent form to them in:
+                            </p>
+
+                            <div class="mb-6">
+                                <label
+                                    for="16"
+                                    class="block text-lg font-medium mb-2"
+                                    >Language:</label
+                                >
+                                <input
+                                    type="text"
+                                    id="16"
+                                    class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                    placeholder="Language used for translation"
+                                />
+                            </div>
+
+                            <div class="mb-6">
+                                <label
+                                    for="17"
+                                    class="block text-lg font-medium mb-2"
+                                    >Interpreter's Signature:</label
+                                >
+                                <input
+                                    type="text"
+                                    id="17"
+                                    class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                />
+                            </div>
+
+                            <div class="mb-4">
+                                <label
+                                    for="18"
+                                    class="block text-lg font-medium mb-2"
+                                    >Date:</label
+                                >
+                                <input
+                                    type="date"
+                                    id="18"
+                                    class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 9: Medical Provider Section -->
+                <div id="step-9" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Medical Provider Section
+                        </h2>
+
+                        <div class="biological-context mb-6">
+                            <h3 class="font-semibold text-purple-800">
+                                Medical Considerations
+                            </h3>
+                            <p class="text-purple-800">
+                                The healthcare provider must ensure the patient
+                                is medically appropriate for the sterilization
+                                procedure. This includes evaluating:
+                            </p>
+                            <ul class="list-disc ml-5 text-purple-800">
+                                <li>
+                                    Current health status and medical conditions
+                                </li>
+                                <li>
+                                    Prior abdominal or pelvic surgeries that
+                                    might affect the procedure
+                                </li>
+                                <li>Allergies to anesthesia or medications</li>
+                                <li>
+                                    Potential complications based on individual
+                                    anatomy
+                                </li>
+                                <li>
+                                    Recovery expectations specific to the
+                                    patient's circumstances
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Provider Legal Obligations
+                            </h3>
+                            <p class="text-blue-800">
+                                The healthcare provider must certify they have:
+                            </p>
+                            <ul class="list-disc ml-5 text-blue-800">
+                                <li>
+                                    Explained the procedure's permanent nature
+                                </li>
+                                <li>
+                                    Discussed specific risks, benefits, and
+                                    alternatives
+                                </li>
+                                <li>
+                                    Provided information in an understandable
+                                    manner
+                                </li>
+                                <li>
+                                    Ensured the patient is not under duress or
+                                    coercion
+                                </li>
+                                <li>Allowed opportunity for questions</li>
+                                <li>Documented the informed consent process</li>
+                            </ul>
+                            <p class="text-blue-800 mt-2">
+                                This documentation protects both the patient and
+                                provider in the event of future questions or
+                                concerns.
+                            </p>
+                        </div>
+
+                        <div class="bg-yellow-100 p-4 mb-6 rounded-lg">
+                            <p class="text-yellow-800 font-bold">
+                                This section must be completed by the healthcare
+                                provider who explained the sterilization
+                                procedure to the patient.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="19"
+                                class="block text-lg font-medium mb-2"
+                                >Patient's name:</label
+                            >
+                            <input
+                                type="text"
+                                id="19"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="20"
+                                class="block text-lg font-medium mb-2"
+                                >Type of operation:</label
+                            >
+                            <input
+                                type="text"
+                                id="20"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <p class="mb-6">
+                            I explained that this is a final and irreversible
+                            procedure. I explained the risks, benefits, and
+                            alternatives to sterilization. I informed the
+                            patient that they can withdraw consent at any time
+                            without losing any benefits or healthcare services.
+                        </p>
+
+                        <div class="mb-6">
+                            <label
+                                for="21"
+                                class="block text-lg font-medium mb-2"
+                                >Healthcare Provider Signature:</label
+                            >
+                            <input
+                                type="text"
+                                id="21"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="22"
+                                class="block text-lg font-medium mb-2"
+                                >Date:</label
+                            >
+                            <input
+                                type="date"
+                                id="22"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="23"
+                                class="block text-lg font-medium mb-2"
+                                >Facility Name:</label
+                            >
+                            <input
+                                type="text"
+                                id="23"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-4">
+                            <label
+                                for="24"
+                                class="block text-lg font-medium mb-2"
+                                >Facility Address:</label
+                            >
+                            <input
+                                type="text"
+                                id="24"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="button"
+                            class="nav-btn bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium"
+                            onclick="nextStep()"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 10: Physician's Statement -->
+                <div id="step-10" class="form-step p-8">
+                    <div class="mb-6">
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                            Physician's Statement
+                        </h2>
+
+                        <div class="biological-context mb-6">
+                            <h3 class="font-semibold text-purple-800">
+                                Post-Procedure Information
+                            </h3>
+                            <p class="text-purple-800">
+                                After sterilization, patients should be aware
+                                of:
+                            </p>
+                            <ul class="list-disc ml-5 text-purple-800">
+                                <li>
+                                    <strong>Recovery time:</strong> Typically a
+                                    few days to 2 weeks, depending on the
+                                    procedure
+                                </li>
+                                <li>
+                                    <strong>Expected side effects:</strong> Some
+                                    pain, swelling, or bruising at the surgical
+                                    site
+                                </li>
+                                <li>
+                                    <strong>For vasectomy patients:</strong>
+                                    Sperm may still be present for several
+                                    months after the procedure; alternative
+                                    contraception is recommended until testing
+                                    confirms absence of sperm
+                                </li>
+                                <li>
+                                    <strong>For tubal procedures:</strong> The
+                                    procedure is effective immediately, but some
+                                    surgeons recommend additional contraception
+                                    for the first month
+                                </li>
+                            </ul>
+                            <p class="text-purple-800 mt-2">
+                                Patients should contact their doctor if they
+                                experience severe pain, heavy bleeding, signs of
+                                infection, or other concerning symptoms.
+                            </p>
+                        </div>
+
+                        <div class="legal-context mb-6">
+                            <h3 class="font-semibold text-blue-800">
+                                Exception to Waiting Period
+                            </h3>
+                            <p class="text-blue-800">
+                                Federal regulations allow exceptions to the
+                                30-day waiting period only in specific
+                                circumstances:
+                            </p>
+                            <ul class="list-disc ml-5 text-blue-800">
+                                <li>
+                                    <strong>Premature delivery:</strong> When
+                                    delivery occurs earlier than expected, but
+                                    at least 72 hours must pass between consent
+                                    and sterilization
+                                </li>
+                                <li>
+                                    <strong
+                                        >Emergency abdominal surgery:</strong
+                                    >
+                                    When unplanned surgery presents an
+                                    opportunity for sterilization, but at least
+                                    72 hours must pass between consent and
+                                    sterilization
+                                </li>
+                            </ul>
+                            <p class="text-blue-800 mt-2">
+                                These exceptions must be clearly documented with
+                                justification by the physician performing the
+                                procedure.
+                            </p>
+                        </div>
+
+                        <div class="bg-yellow-100 p-4 mb-6 rounded-lg">
+                            <p class="text-yellow-800 font-bold">
+                                This section must be completed by the physician
+                                who performs the sterilization procedure, at the
+                                time of the procedure.
+                            </p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="25"
+                                class="block text-lg font-medium mb-2"
+                                >Patient's Name:</label
+                            >
+                            <input
+                                type="text"
+                                id="25"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="26"
+                                class="block text-lg font-medium mb-2"
+                                >Date of Sterilization:</label
+                            >
+                            <input
+                                type="date"
+                                id="26"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="27"
+                                class="block text-lg font-medium mb-2"
+                                >Type of operation:</label
+                            >
+                            <input
+                                type="text"
+                                id="27"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <p class="text-lg font-medium mb-3">
+                            Time Requirement Certification:
+                        </p>
+
+                        <div class="p-4 border rounded-lg bg-gray-50 mb-6">
+                            <div class="mb-3">
+                                <input
+                                    type="radio"
+                                    name="timingOption"
+                                    id="standard"
+                                    class="w-5 h-5 mr-3"
+                                    onchange="handleTimingOption()"
+                                />
+                                <label for="standard"
+                                    >At least 30 days have passed between the
+                                    date of the patient's signature on the
+                                    consent form and the date of
+                                    sterilization.</label
+                                >
+                            </div>
+
+                            <div class="mb-2">
+                                <input
+                                    type="radio"
+                                    name="timingOption"
+                                    id="exception"
+                                    class="w-5 h-5 mr-3"
+                                    onchange="handleTimingOption()"
+                                />
+                                <label for="exception"
+                                    >Less than 30 days but more than 72 hours
+                                    have passed due to one of the following
+                                    exceptions:</label
+                                >
+                            </div>
+
+                            <div id="exceptionOptions" class="ml-8 mt-3 hidden">
+                                <div class="mb-3">
+                                    <input
+                                        type="radio"
+                                        name="exceptionType"
+                                        id="28"
+                                        class="w-5 h-5 mr-3"
+                                        onchange="togglePrematureDelivery()"
+                                    />
+                                    <label for="28">Premature delivery</label>
+                                    <div
+                                        id="prematureDeliveryDate"
+                                        class="ml-8 mt-2 hidden"
+                                    >
+                                        <label for="29"
+                                            >Individual's expected date of
+                                            delivery:</label
+                                        >
+                                        <input
+                                            type="date"
+                                            id="29"
+                                            class="border-2 border-gray-300 p-2 rounded-lg mt-1 w-full"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <input
+                                        type="radio"
+                                        name="exceptionType"
+                                        id="30"
+                                        class="w-5 h-5 mr-3"
+                                        onchange="toggleEmergencySurgery()"
+                                    />
+                                    <label for="30"
+                                        >Emergency abdominal surgery</label
+                                    >
+                                    <div
+                                        id="emergencySurgeryDetails"
+                                        class="ml-8 mt-2 hidden"
+                                    >
+                                        <label for="31"
+                                            >Describe circumstances:</label
+                                        >
+                                        <textarea
+                                            id="31"
+                                            class="border-2 border-gray-300 p-2 rounded-lg mt-1 w-full"
+                                            rows="2"
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <label
+                                for="32"
+                                class="block text-lg font-medium mb-2"
+                                >Physician's Signature:</label
+                            >
+                            <input
+                                type="text"
+                                id="32"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+
+                        <div class="mb-4">
+                            <label
+                                for="33"
+                                class="block text-lg font-medium mb-2"
+                                >Date:</label
+                            >
+                            <input
+                                type="date"
+                                id="33"
+                                class="w-full border-2 border-gray-300 p-4 rounded-lg text-lg"
+                            />
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-8">
+                        <button
+                            type="button"
+                            class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 px-8 py-3 rounded-lg font-medium"
+                            onclick="prevStep()"
+                        >
+                            Back
+                        </button>
+                        <button
+                            type="submit"
+                            class="nav-btn bg-green-500 hover:bg-green-600 text-white px-10 py-3 rounded-lg font-medium"
+                        >
+                            Submit Form
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <script>
+            // Current step tracking
+            let currentStep = 1;
+            const totalSteps = 10;
+
+            // Initialize the form
+            document.addEventListener("DOMContentLoaded", function () {
+                // Set default dates
+                const today = new Date().toISOString().split("T")[0];
+                document.getElementById("8").value = today;
+                document.getElementById("18").value = today;
+                document.getElementById("22").value = today;
+                document.getElementById("33").value = today;
+
+                // Validate age when birth date is entered
+                document
+                    .getElementById("3")
+                    .addEventListener("change", function () {
+                        validateAge(this);
+                    });
+
+                // Sync operation type across the form
+                document
+                    .getElementById("2")
+                    .addEventListener("input", function () {
+                        document.getElementById("6").value = this.value;
+                        document.getElementById("20").value = this.value;
+                        document.getElementById("27").value = this.value;
+                    });
+
+                // Sync patient name across the form
+                document
+                    .getElementById("4")
+                    .addEventListener("input", function () {
+                        document.getElementById("19").value = this.value;
+                        document.getElementById("25").value = this.value;
+                    });
+
+                // Form submission
+                document
+                    .getElementById("sterilizationForm")
+                    .addEventListener("submit", function (e) {
+                        e.preventDefault();
+                        alert("Form submitted successfully!");
+                        // In a real application, you would collect and submit all form data here
+                        // const formData = new FormData(this);
+                        // fetch('/submit-form', { method: 'POST', body: formData });
+                    });
+            });
+
+            // Navigate to next step
+            function nextStep() {
+                if (validateCurrentStep()) {
+                    document
+                        .getElementById(`step-${currentStep}`)
+                        .classList.remove("active");
+                    currentStep++;
+                    document
+                        .getElementById(`step-${currentStep}`)
+                        .classList.add("active");
+                    updateProgressBar();
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                }
+            }
+
+            // Navigate to previous step
+            function prevStep() {
+                document
+                    .getElementById(`step-${currentStep}`)
+                    .classList.remove("active");
+                currentStep--;
+                document
+                    .getElementById(`step-${currentStep}`)
+                    .classList.add("active");
+                updateProgressBar();
+                window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+
+            // Update progress bar
+            function updateProgressBar() {
+                const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+                document.getElementById("progressBar").style.width =
+                    `${progress}%`;
+            }
+
+            // Validate current step
+            function validateCurrentStep() {
+                switch (currentStep) {
+                    case 1:
+                        return true; // Introduction - no validation needed
+
+                    case 2:
+                        return validateField(
+                            "1",
+                            "Please enter the doctor or clinic name",
+                        );
+
+                    case 3:
+                        return validateField(
+                            "2",
+                            "Please enter the type of operation",
+                        );
+
+                    case 4:
+                        return (
+                            validateField(
+                                "3",
+                                "Please enter your date of birth",
+                            ) &&
+                            validateField("4", "Please enter your full name")
+                        );
+
+                    case 5:
+                        return (
+                            validateField(
+                                "5",
+                                "Please enter the doctor or clinic name",
+                            ) &&
+                            validateField(
+                                "6",
+                                "Please enter the type of operation",
+                            )
+                        );
+
+                    case 6:
+                        return (
+                            validateField("7", "Please enter your signature") &&
+                            validateField("8", "Please enter today's date")
+                        );
+
+                    case 7:
+                        return true; // Demographics - optional
+
+                    case 8:
+                        if (document.getElementById("interpreterYes").checked) {
+                            return (
+                                validateField(
+                                    "16",
+                                    "Please enter the language",
+                                ) &&
+                                validateField(
+                                    "17",
+                                    "Please enter the interpreter's signature",
+                                ) &&
+                                validateField("18", "Please enter the date")
+                            );
+                        }
+                        return true;
+
+                    case 9:
+                    case 10:
+                        return true; // Medical staff sections - validation not enforced for form flow
+
+                    default:
+                        return true;
+                }
+            }
+
+            // Field validation helper
+            function validateField(id, message) {
+                const field = document.getElementById(id);
+                if (!field.value.trim()) {
+                    alert(message);
+                    field.focus();
+                    return false;
+                }
+                return true;
+            }
+
+            // Toggle interpreter section visibility
+            function toggleInterpreterSection(show) {
+                document
+                    .getElementById("interpreterFields")
+                    .classList.toggle("hidden", !show);
+            }
+
+            // Toggle timing options
+            function handleTimingOption() {
+                document
+                    .getElementById("exceptionOptions")
+                    .classList.toggle(
+                        "hidden",
+                        !document.getElementById("exception").checked,
+                    );
+            }
+
+            // Toggle premature delivery date field
+            function togglePrematureDelivery() {
+                document
+                    .getElementById("prematureDeliveryDate")
+                    .classList.remove("hidden");
+                document
+                    .getElementById("emergencySurgeryDetails")
+                    .classList.add("hidden");
+            }
+
+            // Toggle emergency surgery details field
+            function toggleEmergencySurgery() {
+                document
+                    .getElementById("prematureDeliveryDate")
+                    .classList.add("hidden");
+                document
+                    .getElementById("emergencySurgeryDetails")
+                    .classList.remove("hidden");
+            }
+
+            // Validate age (must be at least 21)
+            function validateAge(input) {
+                const birthDate = new Date(input.value);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+
+                if (
+                    monthDiff < 0 ||
+                    (monthDiff === 0 && today.getDate() < birthDate.getDate())
+                ) {
+                    age--;
+                }
+
+                if (age < 21) {
+                    alert(
+                        "You must be at least 21 years old to consent to sterilization.",
+                    );
+                    input.value = "";
+                }
+            }
+        </script>
+    </body>
+</html>
