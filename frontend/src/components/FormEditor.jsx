@@ -3,8 +3,7 @@ import './FormEditor.css';
 import conformLogo from '../assets/conform_logo.png';
 import h2aiLogo from '../assets/h2ai_logo.png';
 import { scrollToTop } from '../utils/scrollUtils';
-import Autofill from '../form_components/text_input';
-import TextInput from '../form_components/text_input';
+import FormFieldNavigator from './FormFieldNavigator';
 
 const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, form, navigateToDashboard }) => {
   const [formElements, setFormElements] = useState([]);
@@ -20,6 +19,8 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
   const [newOption, setNewOption] = useState('');
   const [formTitle, setFormTitle] = useState(form ? form.title : 'New Form');
   const [pdfUrl, setPdfUrl] = useState(form ? form.pdfUrl : '');
+  const [generatedFormHtml, setGeneratedFormHtml] = useState('');
+  const [isFormGenerated, setIsFormGenerated] = useState(false);
 
   useEffect(() => {
     // Update state when form prop changes
@@ -153,6 +154,117 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     // setFormElements(updatedElements);
   };
 
+  const handleApplyRadial = (option, fieldName) => {
+    console.log(`Applied radio option "${option}" to field: ${fieldName}`);
+    alert(`Selected "${option}" for field: "${fieldName}"`);
+    // In a real implementation, you would update the form element
+  };
+
+  const handleFormSubmit = (formData) => {
+    console.log('Form submitted with data:', formData);
+    
+    // Here you would typically send the data to your backend
+    // For example:
+    // axios.post('/api/submit-form', { formId: form.id, formData })
+    //   .then(response => {
+    //     alert('Form submitted successfully!');
+    //     navigateToDashboard();
+    //   })
+    //   .catch(error => {
+    //     console.error('Error submitting form:', error);
+    //     alert('Error submitting form. Please try again.');
+    //   });
+    
+    // For now, just show an alert
+    alert('Form submitted successfully!');
+    navigateToDashboard();
+  };
+
+  const generateForm = async () => {
+    // This would be replaced with your actual API call to the LLM
+    try {
+      // Example API call:
+      // const response = await axios.post('/api/generate-form', {
+      //   pdfUrl: pdfUrl,
+      //   formElements: formElements
+      // });
+      // setGeneratedFormHtml(response.data.html);
+      
+      // For testing, we'll use a more realistic placeholder with multiple fields
+      const testHtml = `
+        <div data-field-id="field1" data-field-name="patientName" data-required="true">
+          <label class="text-white text-lg font-medium mb-2">
+            Patient Name
+            <span class="text-emerald-400 ml-1">*</span>
+          </label>
+          <p class="text-white/60 text-sm mb-4">
+            Enter the patient's full legal name as it appears on their ID.
+          </p>
+          <div class="mb-5">
+            <input
+              type="text"
+              name="patientName"
+              required
+              class="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white text-base transition-all focus:outline-none focus:border-emerald-400/40 focus:shadow focus:shadow-emerald-400/10"
+              placeholder="e.g. John Smith"
+            />
+          </div>
+        </div>
+        
+        <div data-field-id="field2" data-field-name="gender" data-required="true">
+          <label class="text-white text-lg font-medium mb-2">
+            Gender
+            <span class="text-emerald-400 ml-1">*</span>
+          </label>
+          <p class="text-white/60 text-sm mb-4">
+            Select the patient's gender as it appears on their medical records.
+          </p>
+          <div class="mb-4">
+            <div class="space-y-2">
+              <div class="flex items-center p-3 bg-purple-900/[0.08] rounded-lg cursor-pointer transition-all border border-purple-300/[0.15] mb-2 hover:bg-purple-900/[0.15]">
+                <input type="radio" id="gender-male" name="gender" value="male" required class="hidden" />
+                <div class="w-[18px] h-[18px] rounded-full border-2 border-white/50 mr-3 flex items-center justify-center"></div>
+                <label for="gender-male" class="text-white text-[0.95rem]">Male</label>
+              </div>
+              <div class="flex items-center p-3 bg-purple-900/[0.08] rounded-lg cursor-pointer transition-all border border-purple-300/[0.15] mb-2 hover:bg-purple-900/[0.15]">
+                <input type="radio" id="gender-female" name="gender" value="female" required class="hidden" />
+                <div class="w-[18px] h-[18px] rounded-full border-2 border-white/50 mr-3 flex items-center justify-center"></div>
+                <label for="gender-female" class="text-white text-[0.95rem]">Female</label>
+              </div>
+              <div class="flex items-center p-3 bg-purple-900/[0.08] rounded-lg cursor-pointer transition-all border border-purple-300/[0.15] mb-2 hover:bg-purple-900/[0.15]">
+                <input type="radio" id="gender-other" name="gender" value="other" required class="hidden" />
+                <div class="w-[18px] h-[18px] rounded-full border-2 border-white/50 mr-3 flex items-center justify-center"></div>
+                <label for="gender-other" class="text-white text-[0.95rem]">Other</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div data-field-id="field3" data-field-name="dob" data-required="false">
+          <label class="text-white text-lg font-medium mb-2">
+            Date of Birth
+          </label>
+          <p class="text-white/60 text-sm mb-4">
+            Enter the patient's date of birth.
+          </p>
+          <div class="mb-5">
+            <input
+              type="date"
+              name="dob"
+              class="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white text-base transition-all focus:outline-none focus:border-emerald-400/40 focus:shadow focus:shadow-emerald-400/10"
+            />
+          </div>
+        </div>
+      `;
+      
+      setGeneratedFormHtml(testHtml);
+      setIsFormGenerated(true);
+    } catch (error) {
+      console.error('Error generating form:', error);
+      alert('Error generating form. Please try again.');
+    }
+  };
+
   return (
     <div className="app">
       <div className="sparkle"></div>
@@ -266,19 +378,10 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
             <div className="form-preview-panel">
               <h2>Intelligent Form Editor</h2>
               
-              {formElements.length === 0 ? (
-                <div className="empty-preview">
-                  <p>Add elements to see a preview of your form here.</p>
-                </div>
-              ) : (
-                <div className="form-preview">
-                  <TextInput 
-                    onApply={handleApplyAutofill} 
-                    fieldName={formElements.length > 0 ? formElements[0].label : ''}
-                    type="llm-generated"
-                  />
-                </div>
-              )}
+              <FormFieldNavigator 
+                formHtml={generatedFormHtml}
+                onSubmit={handleFormSubmit}
+              />
             </div>
           </div>
           

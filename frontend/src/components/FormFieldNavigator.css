@@ -1,0 +1,90 @@
+.form-navigator {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 1rem;
+  background: rgba(59, 43, 109, 0.7);
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.form-content-area {
+  min-height: 200px;
+  animation: fadeIn 0.3s ease-in-out;
+  padding: 1.5rem;
+}
+
+.form-field-container {
+  width: 100%;
+}
+
+.form-navigation-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 1rem 0;
+}
+
+.form-navigation {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+}
+
+/* Increase specificity and ensure all buttons get the green styling */
+.form-navigation .nav-button,
+.form-navigation .prev-button,
+.form-navigation .next-button,
+.form-navigation .submit-button {
+  padding: 0.75rem 2rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid;
+  font-size: 1rem;
+  background: rgba(79, 255, 176, 0.2) !important;
+  color: #4FFFB0 !important;
+  border-color: rgba(79, 255, 176, 0.4) !important;
+}
+
+/* Ensure hover state works for all buttons */
+.form-navigation .nav-button:hover:not(:disabled):not(.disabled),
+.form-navigation .prev-button:hover:not(:disabled):not(.disabled),
+.form-navigation .next-button:hover:not(:disabled):not(.disabled),
+.form-navigation .submit-button:hover:not(:disabled):not(.disabled) {
+  background: rgba(79, 255, 176, 0.3) !important;
+}
+
+/* Ensure disabled state works for all buttons */
+.form-navigation .nav-button.disabled,
+.form-navigation .nav-button:disabled,
+.form-navigation .prev-button.disabled,
+.form-navigation .prev-button:disabled,
+.form-navigation .next-button.disabled,
+.form-navigation .next-button:disabled,
+.form-navigation .submit-button.disabled,
+.form-navigation .submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.form-progress {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.loading-message {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 2rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+} 
