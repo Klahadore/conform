@@ -1086,10 +1086,17 @@
 
 /* Update the patient info modal to match the all forms styling */
 .patient-info-modal {
-  width: 90%;
-  max-width: 800px;
+  max-width: 700px;
   max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-info-modal .modal-body {
+  padding: 0 1rem;
+  flex: 1;
   overflow-y: auto;
+  max-height: calc(90vh - 140px); /* Adjust based on header and footer height */
 }
 
 .patient-info-section {
@@ -1145,19 +1152,20 @@
   margin: 0;
 }
 
-/* Update patient info action buttons to match EditProfile modal */
+/* Fix the patient info actions to have buttons side by side and centered */
 .patient-info-actions {
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: auto;
   display: flex;
   justify-content: center;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 0.5rem;
+  gap: 1.5rem; /* Add space between buttons */
 }
 
 .patient-info-actions .dashboard-button {
-  flex: 1;
-  max-width: 180px;
-  padding: 0.75rem 1.5rem;
+  flex: 0 0 auto; /* Don't allow buttons to grow/shrink */
+  width: 180px; /* Fixed width for both buttons */
+  padding: 0.75rem 1rem;
   border-radius: 2rem;
   font-weight: 600;
   cursor: pointer;
@@ -1168,7 +1176,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: 0;
+  margin: 0; /* Remove any margin */
 }
 
 .patient-info-actions .dashboard-button.secondary {
@@ -1255,4 +1263,187 @@
 
 .file-item:last-child {
   border-bottom: none;
+}
+
+/* Enhanced styles for the patient form */
+.patient-input,
+.patient-select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  font-size: 1rem;
+}
+
+.patient-input:focus,
+.patient-select:focus {
+  outline: none;
+  border-color: #4FFFB0;
+  box-shadow: 0 0 0 2px rgba(79, 255, 176, 0.3);
+}
+
+textarea.patient-input {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Make the modal larger to accommodate more fields */
+.modal-content {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Add a scrollbar style for the modal content */
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(79, 255, 176, 0.3);
+  border-radius: 4px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 255, 176, 0.5);
+}
+
+/* Add a required field indicator */
+.form-group label::after {
+  content: " *";
+  color: #ff4f4f;
+  display: none;
+}
+
+.form-group label[for="patientName"]::after {
+  display: inline;
+}
+
+/* Add some spacing between form groups */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+/* Make the patient info display in the list more comprehensive */
+.patient-info-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.patient-info-item {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.patient-info-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.25rem;
+}
+
+.patient-info-value {
+  color: white;
+  font-weight: 500;
+}
+
+.patient-info-value.empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+/* Enhanced styles for the patient info modal */
+.patient-info-modal {
+  max-width: 700px;
+}
+
+.patient-info-modal .modal-body {
+  padding: 0 1rem;
+}
+
+.patient-info-section {
+  margin-bottom: 2rem;
+}
+
+.patient-info-section h4 {
+  color: #E9D8FD;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.patient-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.patient-medical-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.patient-info-item {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+.patient-info-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.patient-info-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.25rem;
+}
+
+.patient-info-value {
+  color: white;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.patient-info-value.empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+}
+
+/* Make the medical conditions and medications sections look better */
+.patient-info-item.full-width .patient-info-value {
+  white-space: pre-line; /* Preserve line breaks in text */
+  max-height: none; /* Remove max-height to prevent scrollbar */
+  overflow-y: visible; /* Remove scrollbar */
+  padding-right: 0.5rem;
+}
+
+/* Scrollbar styling for overflow content */
+.patient-info-value::-webkit-scrollbar {
+  width: 6px;
+}
+
+.patient-info-value::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.patient-info-value::-webkit-scrollbar-thumb {
+  background: rgba(79, 255, 176, 0.3);
+  border-radius: 3px;
+}
+
+.patient-info-value::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 255, 176, 0.5);
 } 

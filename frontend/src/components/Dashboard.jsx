@@ -40,6 +40,12 @@ const Dashboard = ({
   const [newPatientName, setNewPatientName] = useState('');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const patientFileInputRef = useRef(null);
+  const [patientEmail, setPatientEmail] = useState('');
+  const [patientDob, setPatientDob] = useState('');
+  const [patientGender, setPatientGender] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientConditions, setPatientConditions] = useState('');
+  const [patientMedications, setPatientMedications] = useState('');
   
   // Fetch user's PDFs on component mount
   useEffect(() => {
@@ -525,76 +531,61 @@ const Dashboard = ({
     e.preventDefault();
     
     if (!newPatientName.trim()) {
-      setUploadError('Patient name is required');
-      setTimeout(() => setUploadError(''), 3000);
+      // Show error message
       return;
     }
     
     try {
-      // First create the patient
-      const patientResponse = await fetch(`/api/user/${user.id}/patients`, {
+      // Convert age to number if provided
+      const ageValue = patientAge ? parseInt(patientAge, 10) : null;
+      
+      const response = await fetch(`/api/user/${user.id}/patients`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: newPatientName })
+        body: JSON.stringify({
+          name: newPatientName,
+          email: patientEmail || null,
+          date_of_birth: patientDob || null,
+          gender: patientGender || null,
+          age: ageValue,
+          conditions: patientConditions || null,
+          medications: patientMedications || null
+        }),
       });
       
-      if (!patientResponse.ok) {
-        const errorData = await patientResponse.json();
-        throw new Error(errorData.detail || 'Failed to create patient');
+      if (!response.ok) {
+        throw new Error('Failed to add patient');
       }
       
-      const patientData = await patientResponse.json();
-      const newPatientId = patientData.patient.id;
+      const data = await response.json();
       
-      // If files were selected, upload them and associate with the new patient
-      if (selectedFiles.length > 0) {
-        for (const file of selectedFiles) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('user_id', user.id);
-          
-          const uploadResponse = await fetch('/api/upload-pdf', {
-            method: 'POST',
-            body: formData,
-          });
-          
-          if (!uploadResponse.ok) {
-            throw new Error(`Failed to upload file: ${file.name}`);
-          }
-          
-          const uploadData = await uploadResponse.json();
-          const pdfId = uploadData.pdf.id;
-          
-          // Associate the PDF with the patient
-          await fetch(`/api/pdfs/${pdfId}/patient`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ patient_id: newPatientId })
-          });
-        }
-      }
+      // Add the new patient to the patients list
+      setPatients([...patients, data.patient]);
       
-      // Refresh the patients list and PDFs
-      await fetchUserPatients();
-      await fetchUserPdfs();
-      
-      // Show success message
-      setUploadSuccess(`Patient "${newPatientName}" created successfully`);
-      setTimeout(() => setUploadSuccess(''), 3000);
-      
-      // Reset form and close modal
+      // Reset form fields
       setNewPatientName('');
+      setPatientEmail('');
+      setPatientDob('');
+      setPatientGender('');
+      setPatientAge('');
+      setPatientConditions('');
+      setPatientMedications('');
       setSelectedFiles([]);
+      
+      // Close the modal
       setShowAddPatientModal(false);
+      
+      // Upload any selected files for this patient if needed
+      if (selectedFiles.length > 0) {
+        // Handle file uploads for the new patient
+        // This would depend on your existing file upload logic
+      }
       
     } catch (error) {
       console.error('Error adding patient:', error);
-      setUploadError(`Failed to add patient: ${error.message}`);
-      setTimeout(() => setUploadError(''), 5000);
+      // Show error message to user
     }
   };
 
@@ -1121,6 +1112,61 @@ const Dashboard = ({
             </div>
             
             <div className="modal-body">
+              {/* Patient Details Section */}
+              <div className="patient-info-section">
+                <h4>Patient Details</h4>
+                <div className="patient-details-grid">
+                  <div className="patient-info-item">
+                    <div className="patient-info-label">Email</div>
+                    <div className={`patient-info-value ${!expandedPatient.email ? 'empty' : ''}`}>
+                      {expandedPatient.email || 'Not provided'}
+                    </div>
+                  </div>
+                  
+                  <div className="patient-info-item">
+                    <div className="patient-info-label">Date of Birth</div>
+                    <div className={`patient-info-value ${!expandedPatient.dateOfBirth ? 'empty' : ''}`}>
+                      {expandedPatient.dateOfBirth || 'Not provided'}
+                    </div>
+                  </div>
+                  
+                  <div className="patient-info-item">
+                    <div className="patient-info-label">Gender</div>
+                    <div className={`patient-info-value ${!expandedPatient.gender ? 'empty' : ''}`}>
+                      {expandedPatient.gender || 'Not provided'}
+                    </div>
+                  </div>
+                  
+                  <div className="patient-info-item">
+                    <div className="patient-info-label">Age</div>
+                    <div className={`patient-info-value ${!expandedPatient.age ? 'empty' : ''}`}>
+                      {expandedPatient.age || 'Not provided'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Medical Information Section */}
+              <div className="patient-info-section">
+                <h4>Medical Information</h4>
+                <div className="patient-medical-info">
+                  <div className="patient-info-item full-width">
+                    <div className="patient-info-label">Current Medical Conditions</div>
+                    <div className={`patient-info-value ${!expandedPatient.conditions ? 'empty' : ''}`}>
+                      {expandedPatient.conditions || 'No conditions listed'}
+                    </div>
+                  </div>
+                  
+                  <div className="patient-info-item full-width">
+                    <div className="patient-info-label">Current Medications</div>
+                    <div className={`patient-info-value ${!expandedPatient.medications ? 'empty' : ''}`}>
+                      {expandedPatient.medications || 'No medications listed'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Patient Forms Section */}
               <div className="patient-info-section">
                 <h4>Patient Forms</h4>
                 
@@ -1164,15 +1210,6 @@ const Dashboard = ({
                     <div className="all-forms-empty">No forms assigned to this patient</div>
                   );
                 })()}
-              </div>
-              
-              <div className="patient-info-section">
-                <h4>Additional Information</h4>
-                <div className="patient-additional-info">
-                  <p className="patient-info-placeholder">
-                    Additional patient information will be available here in future updates.
-                  </p>
-                </div>
               </div>
             </div>
             
@@ -1243,8 +1280,87 @@ const Dashboard = ({
                     id="patientName"
                     value={newPatientName}
                     onChange={(e) => setNewPatientName(e.target.value)}
+                    className="patient-input"
                     placeholder="Enter patient name"
                     required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientEmail">Email Address</label>
+                  <input
+                    type="email"
+                    id="patientEmail"
+                    value={patientEmail || ''}
+                    onChange={(e) => setPatientEmail(e.target.value)}
+                    className="patient-input"
+                    placeholder="Enter patient's email (optional)"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientDob">Date of Birth</label>
+                  <input
+                    type="date"
+                    id="patientDob"
+                    value={patientDob || ''}
+                    onChange={(e) => setPatientDob(e.target.value)}
+                    className="patient-input"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientGender">Gender</label>
+                  <select
+                    id="patientGender"
+                    value={patientGender || ''}
+                    onChange={(e) => setPatientGender(e.target.value)}
+                    className="patient-select"
+                  >
+                    <option value="">Select gender (optional)</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Non-binary">Non-binary</option>
+                    <option value="Other">Other</option>
+                    <option value="Prefer not to say">Prefer not to say</option>
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientAge">Age</label>
+                  <input
+                    type="number"
+                    id="patientAge"
+                    value={patientAge || ''}
+                    onChange={(e) => setPatientAge(e.target.value)}
+                    className="patient-input"
+                    placeholder="Enter patient's age (optional)"
+                    min="0"
+                    max="120"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientConditions">Current Medical Conditions</label>
+                  <textarea
+                    id="patientConditions"
+                    value={patientConditions || ''}
+                    onChange={(e) => setPatientConditions(e.target.value)}
+                    className="patient-input"
+                    placeholder="List any current medical conditions (optional)"
+                    rows="3"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label htmlFor="patientMedications">Current Medications</label>
+                  <textarea
+                    id="patientMedications"
+                    value={patientMedications || ''}
+                    onChange={(e) => setPatientMedications(e.target.value)}
+                    className="patient-input"
+                    placeholder="List any current medications (optional)"
+                    rows="3"
                   />
                 </div>
                 

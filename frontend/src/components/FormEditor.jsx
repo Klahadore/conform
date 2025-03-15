@@ -3,6 +3,8 @@ import './FormEditor.css';
 import conformLogo from '../assets/conform_logo.png';
 import h2aiLogo from '../assets/h2ai_logo.png';
 import { scrollToTop } from '../utils/scrollUtils';
+import Autofill from '../form_components/text_input';
+import TextInput from '../form_components/text_input';
 
 const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, form, navigateToDashboard }) => {
   const [formElements, setFormElements] = useState([]);
@@ -26,6 +28,21 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
       setPdfUrl(form.pdfUrl);
     }
   }, [form]);
+
+  useEffect(() => {
+    // Add a sample field for testing if no elements exist
+    if (formElements.length === 0) {
+      setFormElements([
+        {
+          type: 'text',
+          label: 'Patient Full Name',
+          placeholder: 'Enter patient name',
+          required: true,
+          options: []
+        }
+      ]);
+    }
+  }, []);  // Empty dependency array means this runs once on component mount
 
   const handleHomeClick = (e) => {
     e.preventDefault();
@@ -116,6 +133,26 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     }
   };
 
+  const handleApplyAutofill = (option, fieldName) => {
+    console.log(`Applied ${option} to field: ${fieldName}`);
+    
+    // Show a visual confirmation
+    alert(`Applied "${option}" to field: "${fieldName}"`);
+    
+    // In a real implementation, you would update the form element
+    // For example:
+    // const updatedElements = formElements.map(element => {
+    //   if (element.label === fieldName) {
+    //     return {
+    //       ...element,
+    //       autofillOption: option
+    //     };
+    //   }
+    //   return element;
+    // });
+    // setFormElements(updatedElements);
+  };
+
   return (
     <div className="app">
       <div className="sparkle"></div>
@@ -184,7 +221,7 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
 
           <div className="form-editor-content">
             <div className="form-elements-panel">
-              <h2>Form Elements</h2>
+              <h2>Original Fillable Form</h2>
               
               {formElements.length === 0 ? (
                 <div className="empty-elements">
@@ -227,7 +264,7 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
             </div>
             
             <div className="form-preview-panel">
-              <h2>Form Preview</h2>
+              <h2>Intelligent Form Editor</h2>
               
               {formElements.length === 0 ? (
                 <div className="empty-preview">
@@ -235,66 +272,11 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
                 </div>
               ) : (
                 <div className="form-preview">
-                  {formElements.map((element, index) => (
-                    <div key={index} className="preview-element">
-                      <label className="preview-label">
-                        {element.label}
-                        {element.required && <span className="preview-required">*</span>}
-                      </label>
-                      
-                      {element.type === 'text' && (
-                        <input 
-                          type="text" 
-                          className="preview-input"
-                          placeholder={element.placeholder}
-                          disabled
-                        />
-                      )}
-                      
-                      {element.type === 'textarea' && (
-                        <textarea 
-                          className="preview-textarea"
-                          placeholder={element.placeholder}
-                          disabled
-                        ></textarea>
-                      )}
-                      
-                      {element.type === 'select' && (
-                        <select className="preview-select" disabled>
-                          <option value="">Select an option</option>
-                          {element.options.map((option, i) => (
-                            <option key={i} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      )}
-                      
-                      {element.type === 'checkbox' && (
-                        <div className="preview-checkbox-group">
-                          {element.options.map((option, i) => (
-                            <div key={i} className="preview-checkbox-item">
-                              <input type="checkbox" disabled />
-                              <label>{option}</label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
-                      {element.type === 'radio' && (
-                        <div className="preview-radio-group">
-                          {element.options.map((option, i) => (
-                            <div key={i} className="preview-radio-item">
-                              <input type="radio" name={`radio-${index}`} disabled />
-                              <label>{option}</label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  
-                  <button className="preview-submit-button" disabled>
-                    Submit Form
-                  </button>
+                  <TextInput 
+                    onApply={handleApplyAutofill} 
+                    fieldName={formElements.length > 0 ? formElements[0].label : ''}
+                    type="llm-generated"
+                  />
                 </div>
               )}
             </div>
