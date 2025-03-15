@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Use an inline SVG favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>C</text></svg>" type="image/svg+xml">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Conform.ai</title>
+    
+    <!-- Script to force favicon refresh -->
+    <script>
+      // Create a custom favicon with the letter C
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw a circle background
+      ctx.fillStyle = '#4FFFB0'; // Use the Conform green color
+      ctx.beginPath();
+      ctx.arc(32, 32, 32, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw the letter C
+      ctx.fillStyle = '#3B2B6D'; // Use the Conform purple color
+      ctx.font = 'bold 48px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('C', 32, 32);
+      
+      // Create a favicon link
+      const link = document.createElement('link');
+      link.rel = 'icon';
+      link.href = canvas.toDataURL('image/png');
+      document.head.appendChild(link);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html> 

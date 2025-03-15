@@ -1,0 +1,473 @@
+.form-editor-main {
+  max-width: 100%;
+  margin: 0;
+  padding: 8rem 1.5rem 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.form-editor-container {
+  background: linear-gradient(135deg, #3B2B6D 0%, #241656 100%);
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1.5rem;
+}
+
+.form-editor-header h1 {
+  font-size: 2.5rem;
+  color: #E9D8FD;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.form-editor-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 0;
+}
+
+.form-elements-panel,
+.form-preview-panel {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 250px);
+}
+
+.form-elements-panel h2,
+.form-preview-panel h2 {
+  color: #E9D8FD;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.75rem;
+}
+
+.empty-elements,
+.empty-preview {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.5rem;
+  font-style: italic;
+}
+
+.add-element-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.add-element-button:hover {
+  background: #3ee69f;
+}
+
+.form-elements-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  max-height: none;
+}
+
+.form-element-item {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.element-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.element-type {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.element-required {
+  color: #4FFFB0;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.element-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.element-action-button {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  padding: 0.25rem 0.5rem;
+}
+
+.element-action-button:hover {
+  opacity: 1;
+}
+
+.element-action-button.edit {
+  color: #4FFFB0;
+}
+
+.element-action-button.delete {
+  color: #ff4f4f;
+}
+
+.form-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background: white;
+  color: #333;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  min-height: auto;
+  max-height: 800px;
+}
+
+.form-preview h3 {
+  margin-top: 0;
+  margin-bottom: 2rem;
+  color: #3B2B6D;
+  font-size: 1.75rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding-bottom: 1rem;
+}
+
+.preview-elements {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.preview-element {
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.preview-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.preview-required {
+  color: #ff4f4f;
+  margin-left: 0.25rem;
+}
+
+.preview-input,
+.preview-textarea,
+.preview-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ccc;
+  border-radius: 0.25rem;
+  background-color: #f9f9f9;
+  color: #666;
+}
+
+.preview-textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.preview-checkbox-group,
+.preview-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preview-checkbox-item,
+.preview-radio-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-submit-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 200px;
+}
+
+.element-form-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.element-form {
+  background: linear-gradient(135deg, #3B2B6D 0%, #241656 100%);
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  color: white;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.element-form h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  color: #E9D8FD;
+  font-size: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.75rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 1rem;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.options-group {
+  margin-bottom: 2rem;
+}
+
+.options-list {
+  margin-bottom: 1rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.option-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.remove-option-button {
+  background: none;
+  border: none;
+  color: #ff4f4f;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.add-option-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add-option-container input {
+  flex: 1;
+}
+
+.add-option-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.element-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.cancel-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.save-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-button:hover {
+  background: #3ee69f;
+}
+
+.form-editor-actions {
+  display: none;
+}
+
+.form-editor-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.form-editor-button:hover {
+  background: #3ee69f;
+}
+
+.form-editor-button.secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.form-editor-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .form-editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .form-editor-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-elements-panel,
+  .form-preview-panel {
+    max-height: none;
+    height: auto;
+  }
+  
+  .form-preview {
+    min-height: 500px;
+  }
+  
+  .element-form {
+    width: 95%;
+    padding: 1.5rem;
+  }
+}
+
+/* Add a page styling to make it look more like a PDF */
+.form-preview::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.05), transparent);
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+} 
