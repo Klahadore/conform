@@ -316,50 +316,54 @@ const Dashboard = ({
     setShowAllForms(false);
   };
 
-  const handleDeletePdf = (pdfId) => {
-    setPdfToDelete(pdfId);
-    setShowDeleteConfirm(true);
-  };
+  // ... existing code ...
 
-  const confirmDelete = async () => {
-    if (!pdfToDelete) return;
+const handleDeletePdf = (pdfId) => {
+  setPdfToDelete(pdfId);
+  setShowDeleteConfirm(true);
+};
+
+const confirmDelete = async () => {
+  if (!pdfToDelete) return;
+  
+  try {
+    const response = await fetch(`/api/pdfs/${pdfToDelete}`, {
+      method: 'DELETE',
+    });
     
-    try {
-      const response = await fetch(`/api/pdfs/${pdfToDelete}`, {
-        method: 'DELETE',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to delete form');
-      }
-      
-      // Remove the PDF from the userPdfs state
-      setUserPdfs(userPdfs.filter(pdf => pdf.id !== pdfToDelete));
-      
-      // If this was the last uploaded PDF, clear it
-      if (lastUploadedPdf && lastUploadedPdf.id === pdfToDelete) {
-        setLastUploadedPdf(null);
-      }
-      
-      // Show success message
-      setUploadSuccess('Form deleted successfully');
-      setTimeout(() => setUploadSuccess(''), 3000);
-      
-    } catch (error) {
-      console.error('Error deleting PDF:', error);
-      setUploadError('Failed to delete form');
-      setTimeout(() => setUploadError(''), 5000);
-    } finally {
-      // Close the confirmation modal
-      setShowDeleteConfirm(false);
-      setPdfToDelete(null);
+    if (!response.ok) {
+      throw new Error('Failed to delete form');
     }
-  };
-
-  const cancelDelete = () => {
+    
+    // Remove the PDF from the userPdfs state
+    setUserPdfs(userPdfs.filter(pdf => pdf.id !== pdfToDelete));
+    
+    // If this was the last uploaded PDF, clear it
+    if (lastUploadedPdf && lastUploadedPdf.id === pdfToDelete) {
+      setLastUploadedPdf(null);
+    }
+    
+    // Show success message
+    setUploadSuccess('Form deleted successfully');
+    setTimeout(() => setUploadSuccess(''), 3000);
+    
+  } catch (error) {
+    console.error('Error deleting PDF:', error);
+    setUploadError('Failed to delete form');
+    setTimeout(() => setUploadError(''), 5000);
+  } finally {
+    // Close the confirmation modal
     setShowDeleteConfirm(false);
     setPdfToDelete(null);
-  };
+  }
+};
+
+const cancelDelete = () => {
+  setShowDeleteConfirm(false);
+  setPdfToDelete(null);
+};
+
+// ... rest of your component ...
 
   // Add a useEffect to handle the automatic clearing of success messages
   useEffect(() => {
@@ -499,6 +503,54 @@ const Dashboard = ({
   const handleAddNewPatientClick = () => {
     setShowAddPatientModal(true);
   };
+
+  // Function to handle deleting a patient
+  const handleDeletePatient = (patientId) => {
+    setPatientToDelete(patientId);
+    setShowDeletePatientConfirm(true);
+  };
+  
+  // Function to cancel patient deletion
+  const cancelDeletePatient = () => {
+    setPatientToDelete(null);
+    setShowDeletePatientConfirm(false);
+  };
+  
+  // Function to confirm patient deletion
+  // ... existing code ...
+const confirmDeletePatient = async () => {
+  try {
+    // Call the API to delete the patient
+    const response = await fetch(`/api/patients/${patientToDelete}`, {
+      method: 'DELETE'
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to delete patient');
+    }
+    
+    // Remove the patient from the state
+    setPatients(patients.filter(patient => patient.id !== patientToDelete));
+    
+    // Close the confirmation modal
+    setShowDeletePatientConfirm(false);
+    
+    // Close the patient info modal if it's open
+    setExpandedPatient(null);
+    
+    // Show success message
+    setUploadSuccess('Patient deleted successfully');
+    setTimeout(() => setUploadSuccess(''), 3000);
+    
+    // Refresh the PDFs list to update UI
+    fetchUserPdfs();
+  } catch (error) {
+    console.error('Error deleting patient:', error);
+    setUploadError('Failed to delete patient');
+    setTimeout(() => setUploadError(''), 3000);
+  }
+};
+// ... existing code ...
 
   if (showFormEditor) {
     // Find the form to edit
@@ -1074,18 +1126,6 @@ const Dashboard = ({
                             </span>
                           </div>
                           <div className="all-forms-actions">
-                            <button 
-                              className="form-card-action edit"
-                              onClick={() => handleEditForm(form.id)}
-                            >
-                              ✎
-                            </button>
-                            <button 
-                              className="form-card-action delete"
-                              onClick={() => handleDeletePdf(form.id)}
-                            >
-                              −
-                            </button>
                           </div>
                         </div>
                       ))}
