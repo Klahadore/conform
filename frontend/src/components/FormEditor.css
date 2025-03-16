@@ -1125,4 +1125,274 @@
 .direct-html-content textarea,
 .direct-html-content button {
   pointer-events: auto;
+}
+
+/* Add styles for the filled form view */
+.filled-form-view .form-editor-main {
+  background: #3B2B6D;
+  border-radius: 1rem;
+  width: 95%;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.form-editor-filled-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+}
+
+.form-editor-filled-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-editor-filled-header h2 {
+  color: #E9D8FD;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.form-editor-patient-info {
+  color: #4FFFB0;
+  font-size: 1rem;
+  background: rgba(79, 255, 176, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(79, 255, 176, 0.2);
+}
+
+.form-preview-container {
+  flex: 1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.form-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+.filled-form-view .form-editor-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.filled-form-view .form-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Make sure the iframe takes up all available space */
+.filled-form-view .form-preview-container {
+  height: 100%;
+  min-height: 500px;
+}
+
+/* Responsive styles for filled form view */
+@media (max-width: 768px) {
+  .filled-form-view .form-editor-main {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+  }
+  
+  .form-editor-filled-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .form-editor-patient-info {
+    width: 100%;
+  }
+}
+
+/* Add styles for the iframe loading overlay */
+.iframe-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.iframe-loading-overlay p {
+  margin-top: 15px;
+  color: #3B2B6D;
+  font-weight: 600;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(59, 43, 109, 0.2);
+  border-top: 4px solid #4FFFB0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Improve the filled form view */
+.form-preview-container {
+  position: relative;
+  flex: 1;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.form-preview-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: white;
+}
+
+/* Make sure the iframe takes up all available space */
+.filled-form-view .form-preview-container {
+  height: 100%;
+  min-height: 500px;
+}
+
+/* Add styles for the redirect overlay */
+.redirect-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  color: white;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.redirect-message {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #4FFFB0;
+}
+
+.redirect-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #4FFFB0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.redirect-details {
+  margin-top: 1rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 80%;
+  text-align: center;
+}
+
+/* Add styles for the embedded form editor */
+.form-editor-container-embedded {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.form-editor-container-embedded .form-editor-main {
+  background: #3B2B6D;
+  border-radius: 1rem;
+  width: 100%;
+  max-width: 1400px;
+  height: calc(100vh - 120px); /* Adjust height to fit within the main content area */
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.form-editor-container-embedded .form-editor-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+}
+
+.form-editor-container-embedded .form-editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-editor-container-embedded.filled-form-view .form-preview-container {
+  height: 100%;
+  min-height: 400px;
+}
+
+/* Responsive styles for embedded form editor */
+@media (max-width: 768px) {
+  .form-editor-container-embedded .form-editor-main {
+    height: calc(100vh - 180px);
+  }
+  
+  .form-editor-container-embedded .form-editor-filled-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* Make sure the form editor header is visible in embedded mode */
+.form-editor-container-embedded .form-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-editor-container-embedded .form-editor-header h1 {
+  font-size: 1.5rem;
+  color: #E9D8FD;
+  margin: 0;
 } 

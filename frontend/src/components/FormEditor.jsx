@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './FormEditor.css';
+import conformLogo from '../assets/conform_logo.png';
+import h2aiLogo from '../assets/h2ai_logo.png';
 
 const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, form, navigateToDashboard }) => {
   const [htmlContent, setHtmlContent] = useState('');
@@ -14,17 +16,28 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
   const [totalSteps, setTotalSteps] = useState(0);
   const [isFormActive, setIsFormActive] = useState(true); // Always active by default
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Check if this is a filled form
+  const isFilledForm = form && form.isFilledForm;
+
+  // Add a state to track if the iframe has loaded
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
   useEffect(() => {
     // Load HTML content when component mounts or form changes
     if (form) {
-      loadHtmlContent();
+      if (isFilledForm) {
+        // For filled forms, we already have the URL
+        setIsLoading(false);
+      } else {
+        loadHtmlContent();
+      }
     }
-  }, [form]);
+  }, [form, isFilledForm]);
 
   // Parse HTML content when it changes
   useEffect(() => {
-    if (htmlContent) {
+    if (htmlContent && !isFilledForm) {
       try {
         // Extract just the form content from the full HTML document
         const extractedContent = extractFormContent(htmlContent);
@@ -36,11 +49,11 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
         console.error("Error parsing HTML content:", error);
       }
     }
-  }, [htmlContent]);
+  }, [htmlContent, isFilledForm]);
 
   // Attach event listeners when the current step changes
   useEffect(() => {
-    if (isFormActive) {
+    if (isFormActive && !isFilledForm) {
       const timeoutId = setTimeout(() => {
         const cleanup = attachFormEventListeners();
         return () => {
@@ -50,7 +63,7 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
       
       return () => clearTimeout(timeoutId);
     }
-  }, [currentStep, isFormActive]);
+  }, [currentStep, isFormActive, isFilledForm]);
 
   // Function to extract just the form content from the full HTML document
   const extractFormContent = (html) => {
@@ -410,7 +423,64 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     }
   };
   
-  // Render the current form step
+  // Function to render the form content
+  const renderFormContent = () => {
+    if (isFilledForm && form.htmlContent) {
+      return (
+        <div className="form-editor-filled-form">
+          <div className="form-editor-filled-header">
+            <h2>{form.title}</h2>
+            {form.patientName && (
+              <div className="form-editor-patient-info">
+                Patient: {form.patientName}
+              </div>
+            )}
+          </div>
+          <div className="form-preview-container">
+            {isLoading && !iframeLoaded && (
+              <div className="iframe-loading-overlay">
+                <div className="loading-spinner"></div>
+                <p>Loading filled form...</p>
+              </div>
+            )}
+            <iframe 
+              srcDoc={form.htmlContent}
+              className="form-preview-iframe"
+              sandbox="allow-forms allow-scripts"
+              onLoad={() => {
+                setIframeLoaded(true);
+                setIsLoading(false);
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    if (isLoading) {
+      return (
+        <div className="loading-preview">
+          Loading form content...
+        </div>
+      );
+    }
+
+    if (!parsedHtmlContent) {
+      return (
+        <div className="no-content-message">
+          No form content available. Please check the HTML content.
+        </div>
+      );
+    }
+
+    return (
+      <div className="form-interactive-container">
+        {renderCurrentStep()}
+      </div>
+    );
+  };
+
+  // Function to render the current step
   const renderCurrentStep = () => {
     if (!isFormActive || formSteps.length === 0) {
       return (
@@ -439,147 +509,120 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
           dangerouslySetInnerHTML={{ __html: currentStepData.element }}
         />
         
-        <div className="form-navigation-buttons">
+        <div className="form-step-navigation">
           {currentStep > 0 && (
             <button 
-              type="button" 
               className="form-nav-button prev-button"
               onClick={handlePrevStep}
-              disabled={isSubmitting}
             >
               Previous
             </button>
           )}
           
           {currentStep < totalSteps - 1 ? (
-              <button 
-              type="button" 
+            <button 
               className="form-nav-button next-button"
               onClick={handleNextStep}
-              disabled={isSubmitting}
             >
               Next
-              </button>
+            </button>
           ) : (
-              <button 
-              type="button" 
+            <button 
               className="form-nav-button submit-button"
               onClick={handleFormSubmit}
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Submitting...' : 'Submit'}
-              </button>
+            </button>
           )}
-            </div>
-            
-        {isSubmitting && (
-          <div className="form-submission-loading">
-            <div className="loading-spinner"></div>
-            <p>Submitting your form...</p>
-                </div>
-              )}
-            </div>
+        </div>
+      </div>
     );
   };
 
-  // Render the direct HTML content if step-by-step navigation isn't working
+  // Function to render direct HTML content
   const renderDirectHtml = () => {
-    // Add a useEffect to intercept form submissions
-    useEffect(() => {
-      if (formContainerRef.current) {
-        const formElement = formContainerRef.current.querySelector('form');
-        if (formElement) {
-          console.log("Found form element, adding submit handler");
-          
-          // Prevent the default form submission
-          formElement.addEventListener('submit', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Collect form data
-            const formData = {};
-            const inputs = formElement.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-              const { name, value, type, checked, id } = input;
-              const fieldKey = name || id;
-              
-              if (fieldKey) {
-                if (type === 'checkbox' || type === 'radio') {
-                  if (checked) {
-                    formData[fieldKey] = value || 'on';
-                  }
-                } else {
-                  formData[fieldKey] = value;
-                }
-              }
-            });
-            
-            console.log("Form submitted with data:", formData);
-            setFormData(formData);
-            
-            // Use our custom form submission handler
-            handleFormSubmit(e);
-            
-            return false;
-          });
-          
-          // Also prevent any links from opening in new tabs
-          const links = formContainerRef.current.querySelectorAll('a');
-          links.forEach(link => {
-            link.addEventListener('click', (e) => {
-              e.preventDefault();
-              console.log("Link click prevented:", link.href);
-              return false;
-            });
-          });
-        }
-      }
-    }, [parsedHtmlContent]);
-    
     return (
-      <div className="direct-html-container">
-        <div 
-          className="direct-html-content"
-          dangerouslySetInnerHTML={{ __html: parsedHtmlContent }}
-        />
-        
-        {/* Add our own submit button at the bottom */}
-        <div className="form-navigation-buttons" style={{ marginTop: '20px' }}>
-              <button 
-                type="button" 
-            className="form-nav-button submit-button"
-            onClick={handleFormSubmit}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Form'}
-              </button>
-        </div>
-        
-        {isSubmitting && (
-          <div className="form-submission-loading">
-            <div className="loading-spinner"></div>
-            <p>Submitting your form...</p>
-          </div>
-        )}
-          </div>
+      <div 
+        className="direct-html-content"
+        dangerouslySetInnerHTML={{ __html: parsedHtmlContent }}
+      />
     );
   };
 
   return (
-    <div className="form-editor-simplified">
-      <div className="form-content-container" ref={formContainerRef}>
-        {isLoading ? (
-          <div className="loading-preview">Loading form content...</div>
-        ) : htmlContent ? (
-          <div className="form-interactive-container">
-            {formSteps.length > 0 ? renderCurrentStep() : renderDirectHtml()}
+    <div className="app">
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="sparkle"></div>
+      <div className="decorative-circle decorative-circle-1"></div>
+      <div className="decorative-circle decorative-circle-2"></div>
+
+      <header className="header">
+        <div className="header-content">
+          <div className="header-left">
+            <div className="hamburger-menu" onClick={onToggleSidebar}>
+              <div className="hamburger-line"></div>
+              <div className="hamburger-line"></div>
+              <div className="hamburger-line"></div>
+            </div>
+            <div className="logo-container">
+              <img src={conformLogo} alt="Conform.ai logo" className="logo-image" />
+              <span className="logo-text">Conform</span>
+            </div>
           </div>
-        ) : (
-          <div className="no-content-message">
-            No form content available.
+          <div className="h2ai-logo-container">
+            <img src={h2aiLogo} alt="H2.ai logo" className="h2ai-logo" />
           </div>
-        )}
+          <div className="header-right">
+            <div className="user-menu">
+              <span>Welcome, {user?.name}</span>
+              <button onClick={onLogout} className="login-button">Logout</button>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className={`form-editor-container-embedded ${isFilledForm ? 'filled-form-view' : ''}`}>
+        <div className="form-editor-main">
+          <div className="form-editor-header">
+            <h1>{isFilledForm ? 'Filled Form' : 'Form Editor'}</h1>
+            <div className="header-actions">
+              {/* Header actions */}
+            </div>
+          </div>
+          
+          <div className="form-editor-content">
+            {renderFormContent()}
+          </div>
+          
+          <div className="form-editor-actions">
+            <button 
+              className="form-editor-button secondary"
+              onClick={onCancel}
+            >
+              Back to Dashboard
+            </button>
+            
+            {!isFilledForm && (
+              <button 
+                className="form-editor-button"
+                onClick={() => onSaveForm(formData)}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Saving...' : 'Save Form'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

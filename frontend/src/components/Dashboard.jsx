@@ -519,6 +519,7 @@ const Dashboard = ({
         console.log("handleAssignPatient - Processing template with chain2");
         console.log("handleAssignPatient - Template filename:", formToEdit.htmlFilename);
         
+        // Show loading overlay with redirect message
         setIsProcessingTemplate(true);
         setProcessingMessage(`Filling form for patient...`);
         
@@ -557,16 +558,55 @@ const Dashboard = ({
         const data = await response.json();
         console.log("handleAssignPatient - API success response:", JSON.stringify(data, null, 2));
         
-        // Hide the loading overlay
-        setIsProcessingTemplate(false);
+        // Update processing message to indicate fetching the filled form
+        setProcessingMessage('Form filled successfully! Loading content...');
         
-        // Show success message
-        setUploadSuccess(`Form filled successfully! Opening filled form...`);
-        
-        // Open the filled form in a new tab
+        // Fetch the actual HTML content instead of just using the URL
         const filledFormUrl = `/api/filled-form/${encodeURIComponent(data.filled_template_filename)}?user_id=${user.id}`;
-        console.log("handleAssignPatient - Opening filled form URL:", filledFormUrl);
-        window.open(filledFormUrl, '_blank');
+        console.log("handleAssignPatient - Fetching HTML content from:", filledFormUrl);
+        
+        try {
+          const htmlResponse = await fetch(filledFormUrl);
+          
+          if (!htmlResponse.ok) {
+            throw new Error(`Failed to fetch HTML content: ${htmlResponse.status}`);
+          }
+          
+          // Get the HTML content as text
+          const htmlContent = await htmlResponse.text();
+          console.log("handleAssignPatient - Fetched HTML content length:", htmlContent.length);
+          
+          // Get patient name for display
+          const patientName = patients.find(p => p.id == selectedPatient)?.name || 'Unknown Patient';
+          
+          // Create a form object with the filled form data and actual HTML content
+          const filledForm = {
+            id: `filled_${Date.now()}`, // Generate a temporary ID
+            title: `Filled ${formToEdit.title || 'Form'}`,
+            htmlContent: htmlContent, // Store the actual HTML content, not just the URL
+            isFilledForm: true, // Flag to indicate this is a filled form
+            patientId: selectedPatient,
+            patientName: patientName
+          };
+          
+          // Add a small delay before redirecting to ensure the UI updates properly
+          setTimeout(() => {
+            // Hide the loading overlay
+            setIsProcessingTemplate(false);
+            
+            // Show success message
+            setUploadSuccess(`Form filled successfully!`);
+            
+            // Show the form editor with the filled form
+            setCurrentFormId(filledForm.id);
+            setForms(prevForms => [...prevForms, filledForm]);
+            setShowFormEditor(true);
+          }, 1000);
+        } catch (htmlError) {
+          console.error("Error fetching HTML content:", htmlError);
+          setUploadError(`Failed to load filled form: ${htmlError.message}`);
+          setIsProcessingTemplate(false);
+        }
         
         // Return here to prevent falling through to the file upload code
         return;

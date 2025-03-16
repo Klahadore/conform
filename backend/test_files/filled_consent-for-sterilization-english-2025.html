@@ -1,0 +1,805 @@
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consent for Sterilization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .form-step {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            min-height: 350px;
+        }
+        .form-step.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .progress-bar {
+            height: 8px;
+            background-color: #e5e7eb;
+            width: 100%;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.5s ease;
+        }
+        .nav-btn {
+            transition: all 0.3s ease;
+        }
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="progressBar" class="progress-bar">
+        <div id="progressBarFill" class="progress-bar-fill" style="width: 0%"></div>
+    </div>
+
+    <div class="max-w-3xl mx-auto pt-16 px-4 pb-8">
+        <form id="typeform" action="http://localhost:6969/send_form" method="post" class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Introduction -->
+            <div class="form-step active p-8" id="step0">
+                <div class="bg-green-100 p-4 mb-6 border border-green-400 rounded-md">
+                    <p class="font-bold">Note: Some fields in this form have been prefilled based on your information. Please review all information for accuracy before submitting.</p>
+                </div>
+                
+                <h1 class="text-3xl font-bold text-center mb-6">CONSENT FOR STERILIZATION</h1>
+                <p class="text-right text-sm text-gray-600 mb-4">Form Approved: OMB No. 0937-0166<br>Expiration date: 7/31/2025</p>
+                
+                <div class="bg-red-100 p-4 mb-6 border border-red-400 rounded-md">
+                    <p class="font-bold text-center">IMPORTANT NOTICE</p>
+                    <p>YOUR DECISION AT ANY TIME NOT TO BE STERILIZED WILL NOT RESULT IN THE WITHDRAWAL OR WITHHOLDING OF ANY BENEFITS PROVIDED BY PROGRAMS OR PROJECTS RECEIVING FEDERAL FUNDS.</p>
+                </div>
+                
+                <div class="bg-blue-100 p-4 mb-8 rounded-md">
+                    <p><strong>What is sterilization?</strong> Sterilization is a permanent surgical procedure that prevents pregnancy or the ability to father children. This form ensures you understand that this procedure is PERMANENT and CANNOT BE REVERSED in most cases.</p>
+                    <p class="mt-2"><strong>Who should complete this form?</strong> Different sections are completed by different people: the patient (you), your doctor, and if needed, an interpreter. Each section below is clearly marked.</p>
+                </div>
+
+                <div class="flex justify-center mt-8">
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Begin Form
+                    </button>
+                </div>
+            </div>
+
+            <!-- Doctor/Clinic Information -->
+            <div class="form-step p-8" id="step1">
+                <h2 class="text-xl font-bold text-center mb-8">PATIENT SECTION</h2>
+                
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">I have asked for and received information about sterilization from:</label>
+                    <div class="tooltip mb-2">
+                        <span class="tooltip-text">Enter the name of your doctor or clinic</span>
+                        <input id="1" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Doctor or Clinic Name" value="Jibran Hutchins" required>
+                    </div>
+                </div>
+                
+                <div class="bg-blue-100 p-4 rounded-md">
+                    <p>This form confirms that you are making this decision freely, without pressure, and with complete understanding of what sterilization means.</p>
+                </div>
+
+                <div class="flex justify-between mt-12">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Important Information -->
+            <div class="form-step p-8" id="step2">
+                <p class="mb-6">When I first asked for the information, I was told that the decision to be sterilized is completely up to me. I was told that I could decide not to be sterilized. If I decide not to be sterilized, my decision will not affect my right to future care or treatment. I will not lose any help or benefits from programs receiving Federal funds, such as Temporary Assistance for Needy Families (TANF) or Medicaid that I am now getting or for which I may become eligible.</p>
+                
+                <p class="mb-6 font-bold text-center bg-yellow-100 p-3 rounded-md">I UNDERSTAND THAT THE STERILIZATION MUST BE CONSIDERED PERMANENT AND NOT REVERSIBLE. I HAVE DECIDED THAT I DO NOT WANT TO BECOME PREGNANT, BEAR CHILDREN OR FATHER CHILDREN.</p>
+                
+                <p class="mb-6">I was told about those temporary methods of birth control that are available and could be provided to me which will allow me to bear or father a child in the future. I have rejected these alternatives and chosen to be sterilized.</p>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sterilization Operation Type -->
+            <div class="form-step p-8" id="step3">
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">I understand that I will be sterilized by an operation known as:</label>
+                    <input id="2" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type of Operation (e.g., Tubal Ligation, Vasectomy)" value="Vasectomy" required>
+                </div>
+                
+                <div class="bg-blue-100 p-3 mb-6 rounded-md">
+                    <p><strong>Common sterilization procedures include:</strong></p>
+                    <ul class="list-disc ml-5 mt-2">
+                        <li>Tubal ligation (for women) - cutting or blocking the fallopian tubes</li>
+                        <li>Vasectomy (for men) - cutting or blocking the vas deferens</li>
+                    </ul>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Understanding Risks and Benefits -->
+            <div class="form-step p-8" id="step4">
+                <p class="mb-6 text-lg">The discomforts, risks and benefits associated with the operation have been explained to me. All my questions have been answered to my satisfaction.</p>
+                
+                <p class="mb-6 text-lg">I understand that the operation will not be done until at least 30 days after I sign this form. I understand that I can change my mind at any time and that my decision at any time not to be sterilized will not result in the withholding of any benefits or medical services provided by federally funded programs.</p>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Birth Date -->
+            <div class="form-step p-8" id="step5">
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">I am at least 21 years of age and was born on:</label>
+                    <div class="tooltip">
+                        <span class="tooltip-text">You must be at least 21 years old to consent to sterilization</span>
+                        <input id="3" type="date" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="2000-01-01" required>
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Personal Information -->
+            <div class="form-step p-8" id="step6">
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">Please complete your consent statement:</label>
+                    <p class="mb-4">I, <input id="4" type="text" class="border-b border-black px-1 w-48" required placeholder="Your full name" value="Boobs">, hereby consent of my own free will to be sterilized by <input id="5" type="text" class="border-b border-black px-1 w-48" placeholder="Doctor or Clinic" required value="Jibran Hutchins"> by a method called <input id="6" type="text" class="border-b border-black px-1 w-48" placeholder="Type of Operation" required value="Vasectomy">.</p>
+                </div>
+                
+                <p class="mb-4">My consent expires 180 days from the date of my signature below.</p>
+                
+                <p>I also consent to the release of this form and other medical records about the operation to: Representatives of the Department of Health and Human Services, or Employees of programs or projects funded by the Department but only for determining if Federal laws were observed.</p>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Signature and Date -->
+            <div class="form-step p-8" id="step7">
+                <p class="mb-6">I have received a copy of this form.</p>
+                
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">Your Signature:</label>
+                    <input id="7" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your Signature" required>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-xl mb-4">Today's Date:</label>
+                    <input id="8" type="date" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Demographics (Optional) -->
+            <div class="form-step p-8" id="step8">
+                <p class="mb-4 text-gray-700">Optional demographic information (not required to complete form):</p>
+                <div class="bg-blue-100 p-3 mb-4 rounded-md">
+                    <p>This demographic information helps improve healthcare services and ensure equal access to care.</p>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="mb-2 font-semibold">Ethnicity:</p>
+                    <div class="flex items-center mb-2">
+                        <input id="9" type="checkbox" class="mr-2" name="ethnicity">
+                        <label>Hispanic or Latino</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input id="10" type="checkbox" class="mr-2" name="ethnicity">
+                        <label>Not Hispanic or Latino</label>
+                    </div>
+                </div>
+                
+                <div class="mb-6">
+                    <p class="mb-2 font-semibold">Race (mark one or more):</p>
+                    <div class="flex items-center mb-2">
+                        <input id="11" type="checkbox" class="mr-2">
+                        <label>American Indian or Alaska Native</label>
+                    </div>
+                    <div class="flex items-center mb-2">
+                        <input id="12" type="checkbox" class="mr-2">
+                        <label>Asian</label>
+                    </div>
+                    <div class="flex items-center mb-2">
+                        <input id="13" type="checkbox" class="mr-2">
+                        <label>Black or African American</label>
+                    </div>
+                    <div class="flex items-center mb-2">
+                        <input id="14" type="checkbox" class="mr-2">
+                        <label>Native Hawaiian or Other Pacific Islander</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input id="15" type="checkbox" class="mr-2">
+                        <label>White</label>
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Interpreter Section -->
+            <div class="form-step p-8" id="step9">
+                <h2 class="text-xl font-bold text-center mb-6">INTERPRETER'S SECTION (IF APPLICABLE)</h2>
+                
+                <div class="bg-blue-100 p-3 mb-6 rounded-md">
+                    <p>This section should only be completed if an interpreter helped translate information between the doctor and patient. If no interpreter was used, you can proceed to the next section.</p>
+                </div>
+                
+                <div class="mb-2">
+                    <label class="block font-medium mb-2">Was an interpreter used?</label>
+                    <div class="flex items-center">
+                        <input type="radio" id="interpreter_yes" name="interpreter_used" class="mr-2" onchange="showInterpreterFields(true)">
+                        <label for="interpreter_yes" class="mr-4">Yes</label>
+                        <input type="radio" id="interpreter_no" name="interpreter_used" class="mr-2" onchange="showInterpreterFields(false)" checked>
+                        <label for="interpreter_no">No</label>
+                    </div>
+                </div>
+                
+                <div id="interpreterFields" class="hidden mt-4">
+                    <p class="mb-4">I have translated the information and advice presented orally to the individual to be sterilized by the person obtaining this consent. I have also read him/her the consent form in <input id="16" type="text" class="border-b border-black px-1 w-32" placeholder="Language"> language and explained its contents to him/her. To the best of my knowledge and belief he/she understood this explanation.</p>
+                    
+                    <div class="mb-6">
+                        <label class="block text-lg mb-2">Interpreter's Signature:</label>
+                        <input id="17" type="text" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Interpreter's Signature">
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-lg mb-2">Date:</label>
+                        <input id="18" type="date" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Healthcare Provider Section 1 -->
+            <div class="form-step p-8" id="step10">
+                <h2 class="text-xl font-bold text-center mb-6">HEALTHCARE PROVIDER SECTION</h2>
+                
+                <div class="bg-blue-100 p-3 mb-6 rounded-md">
+                    <p>This section is completed by the healthcare provider who obtained the patient's consent.</p>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Patient's Name:</label>
+                    <input id="19" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Patient's Name" value="Boobs" required>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Type of Operation:</label>
+                    <input id="20" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type of Operation" value="Vasectomy" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Healthcare Provider Section 2 -->
+            <div class="form-step p-8" id="step11">
+                <p class="mb-6">I counseled the individual to be sterilized that alternative methods of birth control are available which are temporary. I explained that sterilization is different because it is permanent. I informed the individual to be sterilized that his/her consent can be withdrawn at any time and that he/she will not lose any health services or any benefits provided by Federal funds.</p>
+                
+                <p class="mb-6">To the best of my knowledge and belief the individual to be sterilized is at least 21 years old and appears mentally competent. He/She knowingly and voluntarily requested to be sterilized and appears to understand the nature and consequences of the procedure.</p>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Healthcare Provider's Signature:</label>
+                    <input id="21" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Healthcare Provider's Signature" required>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Today's Date:</label>
+                    <input id="22" type="date" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Facility Information -->
+            <div class="form-step p-8" id="step12">
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Facility Name:</label>
+                    <input id="23" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Facility Name" value="Inova Health" required>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Facility Address:</label>
+                    <input id="24" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Facility Address" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Physician's Statement 1 -->
+            <div class="form-step p-8" id="step13">
+                <h2 class="text-xl font-bold text-center mb-6">PHYSICIAN'S STATEMENT</h2>
+                
+                <div class="bg-blue-100 p-3 mb-6 rounded-md">
+                    <p>This section is completed by the physician who performed the sterilization procedure.</p>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-lg mb-2">Patient's Name:</label>
+                    <input id="25" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Patient's Name" value="Boobs" required>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-lg mb-2">Date of Sterilization:</label>
+                    <input id="26" type="date" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" value="2025-03-16" required>
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-lg mb-2">Type of Operation:</label>
+                    <input id="27" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type of Operation" value="Vasectomy" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Physician's Statement 2 -->
+            <div class="form-step p-8" id="step14">
+                <p class="mb-6">I explained to him/her the nature of the sterilization operation, the fact that it is intended to be a final and irreversible procedure and the discomforts, risks and benefits associated with it.</p>
+                
+                <p class="mb-6">I counseled the individual to be sterilized that alternative methods of birth control are available which are temporary. I explained that sterilization is different because it is permanent.</p>
+                
+                <p class="mb-6">I informed the individual to be sterilized that his/her consent can be withdrawn at any time and that he/she will not lose any health services or benefits provided by Federal funds.</p>
+                
+                <p>To the best of my knowledge and belief the individual to be sterilized is at least 21 years old and appears mentally competent. He/She knowingly and voluntarily requested to be sterilized and appeared to understand the nature and consequences of the procedure.</p>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Waiting Period -->
+            <div class="form-step p-8" id="step15">
+                <div class="bg-yellow-100 p-3 mb-6 rounded-md">
+                    <p class="font-bold">Choose ONE of the following waiting period options:</p>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center mb-4">
+                        <input id="waiting_period_normal" type="radio" name="waiting_period" class="mr-3" checked>
+                        <label for="waiting_period_normal" class="font-semibold">Standard procedure (30-day waiting period)</label>
+                    </div>
+                    <p class="ml-7 mb-6 text-gray-700">At least 30 days have passed between the date of the individual's signature on this consent form and the date the sterilization was performed.</p>
+                    
+                    <div class="flex items-center mb-4">
+                        <input id="waiting_period_exception" type="radio" name="waiting_period" class="mr-3">
+                        <label for="waiting_period_exception" class="font-semibold">Exception (less than 30 days)</label>
+                    </div>
+                    <p class="ml-7 mb-6 text-gray-700">This sterilization was performed less than 30 days but more than 72 hours after the date of the individual's signature on this consent form because of the following circumstances:</p>
+                </div>
+                
+                <div id="exception_details" class="ml-7 mb-6 hidden">
+                    <div class="flex items-center mb-4">
+                        <input id="28" type="checkbox" class="mr-3" name="exception">
+                        <label>Premature delivery</label>
+                    </div>
+                    <div class="mb-6 ml-6 hidden" id="premature_delivery_date">
+                        <label class="block text-sm mb-2">Individual's expected date of delivery:</label>
+                        <input id="29" type="date" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <div class="flex items-center mb-4">
+                        <input id="30" type="checkbox" class="mr-3" name="exception">
+                        <label>Emergency abdominal surgery</label>
+                    </div>
+                    <div class="ml-6 hidden" id="emergency_surgery_details">
+                        <label class="block text-sm mb-2">Describe emergency circumstances:</label>
+                        <input id="31" type="text" class="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe emergency circumstances">
+                    </div>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Physician's Signature -->
+            <div class="form-step p-8" id="step16">
+                <h2 class="text-xl font-bold text-center mb-6">PHYSICIAN'S SIGNATURE</h2>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Physician's Signature:</label>
+                    <input id="32" type="text" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Physician's Signature" required>
+                </div>
+                
+                <div class="mb-8">
+                    <label class="block text-lg mb-2">Today's Date:</label>
+                    <input id="33" type="date" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+
+                <div class="flex justify-between mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="button" class="nav-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline" onclick="nextStep()">
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- Final Step -->
+            <div class="form-step p-8" id="step17">
+                <h2 class="text-xl font-bold text-center mb-6">REVIEW & SUBMIT</h2>
+                
+                <div class="p-4 bg-green-50 border border-green-200 rounded-md mb-6">
+                    <p class="text-center font-medium">You've completed all sections of the consent form.</p>
+                    <p class="text-center mt-2">Please review your information and click Submit to finalize.</p>
+                </div>
+                
+                <div class="text-sm p-4 bg-gray-50 rounded-md mb-6">
+                    <h3 class="text-center font-bold mb-2">PAPERWORK REDUCTION ACT STATEMENT</h3>
+                    <p class="mb-4">A Federal agency may not conduct or sponsor, and a person is not required to respond to, a collection of information unless it displays the currently valid OMB control number. Public reporting burden for this collection of information will vary; however, we estimate an average of one hour per response.</p>
+                    <p class="mb-2">Form Approved: OMB No. 0937-0166</p>
+                    <p class="mb-2">Expiration date: 7/31/2025</p>
+                    <p>HHS-687 (07/2025)</p>
+                </div>
+
+                <div class="flex justify-center mt-8">
+                    <button type="button" class="nav-btn bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full focus:outline-none focus:shadow-outline mr-4" onclick="prevStep()">
+                        Previous
+                    </button>
+                    <button type="submit" class="nav-btn bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">
+                        Submit Form
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = document.querySelectorAll('.form-step').length;
+        
+        // Show/hide steps
+        function showStep(stepNumber) {
+            document.querySelectorAll('.form-step').forEach((step, index) => {
+                step.classList.remove('active');
+                if (index === stepNumber) {
+                    step.classList.add('active');
+                }
+            });
+            
+            // Update progress bar
+            const progress = (stepNumber / (totalSteps - 1)) * 100;
+            document.getElementById('progressBarFill').style.width = `${progress}%`;
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+        
+        // Navigation functions
+        function nextStep() {
+            if (validateCurrentStep()) {
+                currentStep++;
+                if (currentStep >= totalSteps) {
+                    currentStep = totalSteps - 1;
+                }
+                showStep(currentStep);
+            }
+        }
+        
+        function prevStep() {
+            currentStep--;
+            if (currentStep < 0) {
+                currentStep = 0;
+            }
+            showStep(currentStep);
+        }
+        
+        // Validate current step before proceeding
+        function validateCurrentStep() {
+            const currentStepElement = document.querySelectorAll('.form-step')[currentStep];
+            const requiredFields = currentStepElement.querySelectorAll('[required]');
+            
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('border-red-500');
+                    isValid = false;
+                    
+                    // Add shake animation
+                    field.classList.add('shake');
+                    setTimeout(() => {
+                        field.classList.remove('shake');
+                    }, 500);
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
+            
+            // Special validation for date of birth (must be at least 21)
+            if (currentStep === 5 && document.getElementById('3').value) {
+                const birthDate = new Date(document.getElementById('3').value);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+                const monthDiff = today.getMonth() - birthDate.getMonth();
+                
+                if (age < 21 || (age === 21 && monthDiff < 0)) {
+                    alert('You must be at least 21 years old to consent to sterilization.');
+                    document.getElementById('3').classList.add('border-red-500');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // Toggle interpreter fields
+        function showInterpreterFields(show) {
+            const interpreterFields = document.getElementById('interpreterFields');
+            if (show) {
+                interpreterFields.classList.remove('hidden');
+                document.getElementById('16').required = true;
+                document.getElementById('17').required = true;
+                document.getElementById('18').required = true;
+            } else {
+                interpreterFields.classList.add('hidden');
+                document.getElementById('16').required = false;
+                document.getElementById('17').required = false;
+                document.getElementById('18').required = false;
+            }
+        }
+        
+        // Handle waiting period exceptions
+        document.getElementById('waiting_period_exception').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('exception_details').classList.remove('hidden');
+            }
+        });
+        
+        document.getElementById('waiting_period_normal').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('exception_details').classList.add('hidden');
+                document.getElementById('28').checked = false;
+                document.getElementById('30').checked = false;
+                document.getElementById('premature_delivery_date').classList.add('hidden');
+                document.getElementById('emergency_surgery_details').classList.add('hidden');
+            }
+        });
+        
+        // Show/hide exception details
+        document.getElementById('28').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('30').checked = false;
+                document.getElementById('premature_delivery_date').classList.remove('hidden');
+                document.getElementById('emergency_surgery_details').classList.add('hidden');
+                document.getElementById('29').required = true;
+                document.getElementById('31').required = false;
+            } else {
+                document.getElementById('premature_delivery_date').classList.add('hidden');
+                document.getElementById('29').required = false;
+            }
+        });
+        
+        document.getElementById('30').addEventListener('change', function() {
+            if (this.checked) {
+                document.getElementById('28').checked = false;
+                document.getElementById('emergency_surgery_details').classList.remove('hidden');
+                document.getElementById('premature_delivery_date').classList.add('hidden');
+                document.getElementById('31').required = true;
+                document.getElementById('29').required = false;
+            } else {
+                document.getElementById('emergency_surgery_details').classList.add('hidden');
+                document.getElementById('31').required = false;
+            }
+        });
+        
+        // Ensure operation type is consistent throughout the form
+        document.getElementById('2').addEventListener('input', function() {
+            document.getElementById('6').value = this.value;
+            document.getElementById('20').value = this.value;
+            document.getElementById('27').value = this.value;
+        });
+        
+        // Ensure patient name is consistent throughout the form
+        document.getElementById('4').addEventListener('input', function() {
+            document.getElementById('19').value = this.value;
+            document.getElementById('25').value = this.value;
+        });
+        
+        // Set today's date for date fields that should show current date
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('8').value = today;
+        document.getElementById('18').value = today;
+        document.getElementById('22').value = today;
+        document.getElementById('33').value = today;
+        
+        // Ensure only one ethnicity checkbox can be selected
+        const ethnicityCheckboxes = document.querySelectorAll('input[name="ethnicity"]');
+        ethnicityCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                ethnicityCheckboxes.forEach(cb => {
+                    if (cb !== this) cb.checked = false;
+                });
+            });
+        });
+        
+        // Form submission - COLLECTS ALL INPUTS BY ID
+        document
+            .getElementById("typeform")
+            .addEventListener("submit", function (e) {
+                e.preventDefault();
+                // Create an object to hold all form values
+                const formObject = {};
+                // Collect all inputs with IDs
+                document.querySelectorAll("input[id], select[id], textarea[id]").forEach(input => {
+                    // For checkboxes and radio buttons, only include if checked
+                    if (input.type === "checkbox" || input.type === "radio") {
+                        if (input.checked) {
+                            formObject[input.id] = input.value || "on";
+                        }
+                    } else {
+                        // For all other inputs, include their value
+                        formObject[input.id] = input.value;
+                    }
+                });
+                // Add the waiting_period radio value
+                if (document.getElementById("waiting_period_normal").checked) {
+                    formObject["waiting_period"] = "normal";
+                } else if (document.getElementById("waiting_period_exception").checked) {
+                    formObject["waiting_period"] = "exception";
+                }
+                fetch("http://localhost:6969/send_form", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(formObject),
+                })
+                .then((response) => {
+                    if (response.ok) {
+                        alert("Form submitted successfully!");
+                        return response.json();
+                    }
+                    throw new Error("Network response was not ok.");
+                })
+                .catch((error) => {
+                    console.error("Error:", error);
+                    alert(
+                        "There was an error submitting the form. Please try again.",
+                    );
+                });
+            });
+            
+        // Initialize first step
+        showStep(currentStep);
+    </script>
+</body>
+</html>
