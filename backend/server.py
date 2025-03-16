@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Req
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 import sqlite3
 import os
 from datetime import datetime
@@ -196,6 +196,58 @@ def init_db():
 # Call init_db at startup
 init_db()
 
+# Dictionary to track processing status
+processing_status: Dict[str, bool] = {}
+
+# Background task to process PDF
+def process_pdf_background(pdf_path: str, hospital_system: str):
+    try:
+        original_filename = os.path.basename(pdf_path)
+        processing_status[original_filename] = False  # Not completed yet
+        
+        print(f"===== STARTING BACKGROUND PROCESSING =====")
+        print(f"PDF Path: {pdf_path}")
+        print(f"Hospital System: {hospital_system}")
+        print(f"Original Filename: {original_filename}")
+        
+        # Check if the file exists
+        if not os.path.exists(pdf_path):
+            print(f"ERROR: PDF file does not exist at path: {pdf_path}")
+            processing_status[original_filename] = True
+            return
+        
+        # Extract coordinates from PDF (this is a placeholder, you'd need to implement this)
+        coordinates = ""
+        
+        # Import chain1 function to ensure it's available
+        print("Importing chain1 function...")
+        try:
+            from chains.chain1 import chain1 as process_chain
+            print("Successfully imported chain1 function")
+        except ImportError as e:
+            print(f"ERROR importing chain1: {str(e)}")
+            processing_status[original_filename] = True
+            return
+        
+        # Process the PDF with chain1
+        print(f"Calling chain1 function with pdf_path={pdf_path}, coordinates={coordinates}, hospital_system={hospital_system}")
+        result = process_chain(pdf_path, coordinates, hospital_system)
+        
+        # Update processing status
+        processing_status[original_filename] = True
+        
+        print(f"Background processing completed for {original_filename}, result: {result}")
+        print(f"===== FINISHED BACKGROUND PROCESSING =====")
+    except Exception as e:
+        print(f"===== ERROR IN BACKGROUND PROCESSING =====")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        print(f"===== END ERROR REPORT =====")
+        # Mark as completed even on error to prevent endless waiting
+        processing_status[original_filename] = True
+
 # Function to check if a PDF is fillable
 def is_pdf_fillable(file_path):
     try:
@@ -337,6 +389,7 @@ def update_user(
 # Endpoint to upload a PDF
 @app.post("/api/upload-pdf")
 async def upload_pdf(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     user_id: int = Form(...),
 ):
@@ -419,11 +472,10 @@ async def upload_pdf(
         pdf_id = cursor.lastrowid
         conn.commit()
         
-        # Start processing if needed
+        # Start processing in the background
         processing_started = False
         html_generated = False
         
-        # Always process the PDF since we've deleted any existing template
         try:
             # Get the full path to the uploaded PDF
             pdf_path = os.path.join(UPLOADS_DIR, original_filename)
@@ -432,16 +484,16 @@ async def upload_pdf(
             if not os.path.exists(pdf_path):
                 raise Exception(f"PDF file not found at {pdf_path}")
             
-            # Process the PDF synchronously instead of in the background
-            print(f"Starting chain1 processing for {original_filename} at {pdf_path}")
-            result = chain1(pdf_path, "", hospital_system)  # Pass the hospital system
+            # Initialize processing status
+            processing_status[original_filename] = False
+            
+            # Start processing in the background
+            background_tasks.add_task(process_pdf_background, pdf_path, hospital_system)
             
             processing_started = True
-            html_generated = result
-            
-            print(f"Finished processing for {original_filename}, result: {result}")
+            print(f"Started background processing for {original_filename}")
         except Exception as e:
-            print(f"Error processing PDF: {str(e)}")
+            print(f"Error starting background processing: {str(e)}")
             # Even if there's an error, we'll still return success for the upload
         
         # Return success response
@@ -833,6 +885,7 @@ async def create_patient(user_id: int, request: Request):
                 data.get('conditions', ''),
                 data.get('medications', '')
             )
+        )
         conn.commit()
         
         # Get the ID of the newly inserted patient
@@ -1314,68 +1367,55 @@ def get_all_universal_pdfs():
         print(f"Error fetching universal PDFs: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch universal PDFs: {str(e)}")
 
-# Endpoint to check if HTML is ready for a PDF
+# Endpoint to check if HTML has been generated for a PDF
 @app.get("/api/check-html/{original_filename}")
 def check_html_readiness(original_filename: str, user_id: int):
     try:
-        # Get the user's hospital system
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
-        user = cursor.fetchone()
-        
-        if not user:
-            conn.close()
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        hospital_system = user['hospital_system']
-        
-        # Check if the database record exists and has HTML content
-        cursor.execute(
-            "SELECT html_filename, html_content, hospital_system FROM universal_pdfs WHERE original_filename = ?",
-            (original_filename,)
-        )
-        
-        pdf = cursor.fetchone()
-        conn.close()
-        
-        # If no record or hospital system doesn't match, return not ready
-        if not pdf or pdf['hospital_system'] != hospital_system:
-            return {
-                "ready": False,
-                "htmlFilename": None,
-                "originalFilename": original_filename,
-                "fileExists": False,
-                "dbHasHtml": False
-            }
-        
-        # Check if the HTML file exists in the directory
-        html_path = os.path.join(HTML_OUTPUT_DIR, pdf['html_filename'])
-        html_exists = os.path.exists(html_path)
-        
-        db_has_html = pdf and pdf['html_filename'] and pdf['html_content']
-        
-        # If the file doesn't exist but we have a database record, update the database
-        if not html_exists and db_has_html:
+        # Check if the file is still being processed
+        if original_filename in processing_status:
+            # If processing is complete
+            if processing_status[original_filename]:
+                # Remove from tracking dict to free memory
+                del processing_status[original_filename]
+                
+                # Check if HTML was actually generated
+                conn = sqlite3.connect(DB_PATH)
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute(
+                    "SELECT html_filename FROM universal_pdfs WHERE original_filename = ?",
+                    (original_filename,)
+                )
+                
+                result = cursor.fetchone()
+                conn.close()
+                
+                if result and result['html_filename']:
+                    return {"htmlGenerated": True, "htmlFilename": result['html_filename']}
+                else:
+                    return {"htmlGenerated": False, "error": "HTML generation failed"}
+            else:
+                # Still processing
+                return {"htmlGenerated": False, "processing": True}
+        else:
+            # Check if it's already in the database
             conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
+            
             cursor.execute(
-                "UPDATE universal_pdfs SET html_content = NULL, html_filename = NULL WHERE original_filename = ?",
+                "SELECT html_filename FROM universal_pdfs WHERE original_filename = ?",
                 (original_filename,)
             )
-            conn.commit()
+            
+            result = cursor.fetchone()
             conn.close()
-            db_has_html = False
-        
-        return {
-            "ready": html_exists and db_has_html,
-            "htmlFilename": pdf['html_filename'] if html_exists else None,
-            "originalFilename": original_filename,
-            "fileExists": html_exists,
-            "dbHasHtml": db_has_html
-        }
+            
+            if result and result['html_filename']:
+                return {"htmlGenerated": True, "htmlFilename": result['html_filename']}
+            else:
+                return {"htmlGenerated": False, "error": "Not found or processing not started"}
     except Exception as e:
         print(f"Error checking HTML readiness: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to check HTML readiness: {str(e)}")
@@ -1661,8 +1701,10 @@ def get_user_templates(user_id: int):
         hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
         print(f"Looking for templates in: {hospital_dir}")
         
+        # Use a dictionary to track templates by original filename to avoid duplicates
+        templates_dict = {}
+        
         # Get templates from the filesystem
-        template_files = []
         if os.path.exists(hospital_dir):
             print(f"Directory exists: {hospital_dir}")
             for filename in os.listdir(hospital_dir):
@@ -1684,7 +1726,8 @@ def get_user_templates(user_id: int):
                         "updatedAt": datetime.fromtimestamp(file_stats.st_mtime).isoformat()
                     }
                     
-                    template_files.append(template)
+                    # Add to dictionary, overwriting any existing entry with the same original filename
+                    templates_dict[original_filename] = template
         else:
             print(f"Directory does not exist: {hospital_dir}")
             # Create the directory
@@ -1707,14 +1750,17 @@ def get_user_templates(user_id: int):
         # Add database templates that aren't already in the filesystem list
         for db_template in db_templates:
             original_filename = db_template['original_filename']
-            if not any(t['originalFilename'] == original_filename for t in template_files):
+            if original_filename not in templates_dict:
                 print(f"Adding template from database: {original_filename}")
-                template_files.append({
+                templates_dict[original_filename] = {
                     "originalFilename": original_filename,
                     "htmlFilename": db_template['html_filename'],
                     "createdAt": db_template['created_at'],
                     "updatedAt": db_template['updated_at']
-                })
+                }
+        
+        # Convert dictionary to list
+        template_files = list(templates_dict.values())
         
         # Sort templates by updated_at (most recent first)
         template_files.sort(key=lambda x: x["updatedAt"], reverse=True)

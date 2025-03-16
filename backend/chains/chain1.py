@@ -170,15 +170,12 @@ def convert_to_typeform(html_content):
                     {
                         "type": "text",
                         "text": f"""Convert the following HTML form into a Typeform-style multi-step form where:
-
                  1. Each form field or logical group of related fields appears as a separate step/view
                  2. Only one question is shown at a time
                  3. Each step has Next/Previous navigation buttons
                  4. The final step has a Submit button
                  5. All form data is submitted together when the user completes the form
-
                  Include all necessary HTML, CSS, and JavaScript to make this work as a standalone page.
-
                  IMPORTANT REQUIREMENTS:
                  - Maintain all input IDs exactly as they are in the original form
                  - Ensure form validation still works for each field
@@ -187,7 +184,6 @@ def convert_to_typeform(html_content):
                  - Group related questions together in a single view when it makes logical sense
                  - Use smooth transitions between questions
                  - Make it mobile-friendly
-
                  MANDATORY FORM STRUCTURE:
                  - The form must use the id "typeform" and have this exact action and method:
                  `action="http://localhost:6969/send_form" method="post"`
@@ -201,21 +197,17 @@ def convert_to_typeform(html_content):
                  - Form validation
                  - Form submission with fetch API sending JSON data
                  - Any conditional field displays
-
                  CRITICAL SUBMISSION FIX:
                  - The form inputs use IDs without name attributes. You MUST modify the submission code to collect all inputs by their IDs.
                  - Use this exact code for form submission (don't rely on FormData):
-
                  ```javascript
                  // Form submission - COLLECTS ALL INPUTS BY ID
                  document
                      .getElementById("typeform")
                      .addEventListener("submit", function (e) {{
                          e.preventDefault();
-
                          // Create an object to hold all form values
                          const formObject = {{}};
-
                          // Collect all inputs with IDs
                          document.querySelectorAll("input[id], select[id], textarea[id]").forEach(input => {{
                              // For checkboxes and radio buttons, only include if checked
@@ -228,14 +220,12 @@ def convert_to_typeform(html_content):
                                  formObject[input.id] = input.value;
                              }}
                          }});
-
                          // Add the waiting_period radio value
                          if (document.getElementById("waiting_period_normal").checked) {{
                              formObject["waiting_period"] = "normal";
                          }} else if (document.getElementById("waiting_period_exception").checked) {{
                              formObject["waiting_period"] = "exception";
                          }}
-
                          fetch("http://localhost:6969/send_form", {{
                              method: "POST",
                              headers: {{
@@ -257,15 +247,12 @@ def convert_to_typeform(html_content):
                              );
                          }});
                      }});
-
                  STYLING:
-
                      Use the provided CSS classes for form-step, progress-bar, nav-btn, etc.
                      Ensure transitions between steps are smooth with opacity and transform effects
                      Use consistent color schemes (blue for primary buttons, gray for back buttons)
                      Final submit button should be green
-
- Original HTML Form: {html_content}""",
+        Original HTML Form: {html_content}""",
                     },
                 ],
             }

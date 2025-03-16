@@ -943,7 +943,7 @@
   text-align: center;
   background: rgba(79, 255, 176, 0.1);
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 20px;
   border: 1px solid rgba(79, 255, 176, 0.2);
   min-width: 80px;
   display: flex;
@@ -963,7 +963,7 @@
   border: 1px solid rgba(79, 255, 176, 0.3);
   color: #4FFFB0;
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 20px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1074,7 +1074,7 @@
   border: 1px solid rgba(233, 216, 253, 0.3);
   color: #E9D8FD;
   padding: 0.5rem 1rem;
-  border-radius: 0.5rem;
+  border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
   transition: background 0.2s;
@@ -1226,7 +1226,7 @@
   color: #4FFFB0;
   border: 1px solid rgba(79, 255, 176, 0.4);
   padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: 20px;
   cursor: pointer;
   font-size: 0.9rem;
   transition: background 0.2s;
@@ -1460,7 +1460,7 @@ textarea.patient-input {
   background: rgba(79, 255, 176, 0.2);
   color: #4FFFB0;
   border: 1px solid rgba(79, 255, 176, 0.4);
-  border-radius: 0.5rem;
+  border-radius: 20px;
   padding: 0.75rem 1.5rem;
   font-size: 0.9rem;
   cursor: pointer;
@@ -1583,7 +1583,7 @@ textarea.patient-input {
   color: #3B2B6D;
   border: none;
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 20px;
   font-weight: 600;
   cursor: pointer;
   margin-top: 10px;
@@ -1728,6 +1728,21 @@ textarea.patient-input {
   background: rgba(255, 255, 255, 0.15);
 }
 
+.template-item-header {
+  margin-bottom: 10px;
+}
+
+.template-item-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.template-item-date {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .template-name {
   font-weight: 600;
   margin-bottom: 4px;
@@ -1748,7 +1763,7 @@ textarea.patient-input {
   background: rgba(255, 59, 48, 0.2);
   color: #ff3b30;
   border: none;
-  border-radius: 4px;
+  border-radius: 20px;
   padding: 4px 8px;
   font-size: 0.8rem;
   cursor: pointer;
@@ -1756,6 +1771,47 @@ textarea.patient-input {
 
 .delete-button:hover {
   background: rgba(255, 59, 48, 0.3);
+}
+
+.template-item-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.template-item-actions .action-button {
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.template-item-actions .submit-button {
+  background: rgba(0, 122, 255, 0.2);
+  color: #007aff;
+}
+
+.template-item-actions .submit-button:hover {
+  background: rgba(0, 122, 255, 0.3);
+}
+
+.template-item-actions .delete-button {
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff3b30;
+}
+
+.template-item-actions .delete-button:hover {
+  background: rgba(255, 59, 48, 0.3);
+}
+
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .empty-state {

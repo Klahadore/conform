@@ -4,6 +4,7 @@ import h2aiLogo from '../assets/h2ai_logo.png';
 import './Dashboard.css';
 import EditProfile from './EditProfile';
 import FormEditor from './FormEditor';
+import LoadingOverlay from './LoadingOverlay';
 import { scrollToTop } from '../utils/scrollUtils';
 
 const Dashboard = ({ 
@@ -55,6 +56,8 @@ const Dashboard = ({
   const checkIntervalRef = useRef(null);
   const [templates, setTemplates] = useState([]);
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
+  const [isProcessingTemplate, setIsProcessingTemplate] = useState(false);
+  const [processingMessage, setProcessingMessage] = useState('Processing your form...');
   
   // Add a cleanup effect to clear the interval when component unmounts
   useEffect(() => {
@@ -67,10 +70,60 @@ const Dashboard = ({
     };
   }, []);
   
+  // Fetch templates when isProcessingTemplate changes to false
+  useEffect(() => {
+    if (user && !isProcessingTemplate) {
+      console.log("isProcessingTemplate changed to false, fetching templates");
+      fetchTemplates();
+    }
+  }, [user, isProcessingTemplate]);
+  
+  // Add an effect to check completion status periodically if processing is active
+  useEffect(() => {
+    // If we're processing a template, set up a backup check
+    if (isProcessingTemplate && lastUploadedPdf) {
+      console.log("Setting up backup completion check");
+      
+      // Check every 15 seconds as a backup to the main polling
+      const backupIntervalId = setInterval(async () => {
+        try {
+          console.log("Backup check for completion...");
+          const checkResponse = await fetch(`/api/check-html/${encodeURIComponent(lastUploadedPdf.originalFilename)}?user_id=${user.id}`);
+          
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            console.log("Backup check response:", checkData);
+            
+            if (checkData.htmlGenerated) {
+              // Processing is complete, update UI
+              setIsProcessingTemplate(false);
+              setUploadSuccess(`Template Created! "${lastUploadedPdf.originalFilename}" is ready to use.`);
+              
+              // Refresh data
+              fetchUserPdfs();
+              fetchTemplates();
+              
+              // Clear the interval
+              clearInterval(backupIntervalId);
+            }
+          }
+        } catch (error) {
+          console.error("Error in backup completion check:", error);
+        }
+      }, 15000); // Check every 15 seconds
+      
+      // Return cleanup function
+      return () => {
+        clearInterval(backupIntervalId);
+      };
+    }
+  }, [isProcessingTemplate, lastUploadedPdf, user]);
+  
   // Fetch user's PDFs on component mount
   useEffect(() => {
     if (user) {
       fetchUserPdfs();
+      fetchTemplates(); // Also fetch templates on mount
     }
   }, [user]);
   
@@ -192,10 +245,24 @@ const Dashboard = ({
       // If processing was started
       else if (data.pdf.processingStarted) {
         console.log("PDF processing started");
-        setUploadSuccess(`Processing "${data.pdf.originalFilename}" to create template...`);
+        setProcessingMessage(`Processing "${data.pdf.originalFilename}" to create template...`);
+        setIsProcessingTemplate(true);
         
-        // Instead of polling, just wait a fixed amount of time then check once
-        setTimeout(async () => {
+        // Set a timeout to automatically hide the loading overlay after 2 minutes
+        // This gives enough time for the processing to complete in most cases
+        const timeoutId = setTimeout(() => {
+          if (isProcessingTemplate) {
+            setIsProcessingTemplate(false);
+            setUploadSuccess(`Template processing started for "${data.pdf.originalFilename}". It will be available soon.`);
+            // Refresh the user's PDFs list
+            fetchUserPdfs();
+            // Refresh templates
+            fetchTemplates();
+          }
+        }, 120000); // 2 minutes
+        
+        // Set up a polling mechanism that checks every 5 seconds
+        const checkCompletion = async () => {
           try {
             console.log(`Checking HTML readiness for: ${data.pdf.originalFilename}`);
             const checkResponse = await fetch(`/api/check-html/${encodeURIComponent(data.pdf.originalFilename)}?user_id=${user.id}`);
@@ -205,22 +272,57 @@ const Dashboard = ({
               console.log("HTML readiness check response:", checkData);
               
               if (checkData.htmlGenerated) {
+                // Clear the timeout since we're done
+                clearTimeout(timeoutId);
+                
+                // Clear any existing interval
+                if (checkIntervalRef.current) {
+                  clearInterval(checkIntervalRef.current);
+                  checkIntervalRef.current = null;
+                }
+                
+                // Update UI
+                setIsProcessingTemplate(false);
                 setUploadSuccess(`Template Created! "${data.pdf.originalFilename}" is ready to use.`);
-              } else {
-                setUploadSuccess(`Template processing in progress. Please check back later.`);
+                
+                // Refresh data
+                fetchUserPdfs();
+                fetchTemplates();
+                
+                return true; // Processing is complete
               }
             }
+            return false; // Processing is not complete yet
           } catch (error) {
             console.error("Error checking HTML readiness:", error);
-            setUploadSuccess(`Template processing started. Please check back later.`);
+            return false;
           }
-        }, 10000); // Wait 10 seconds before checking
+        };
+        
+        // Check immediately after 5 seconds
+        setTimeout(async () => {
+          const isComplete = await checkCompletion();
+          
+          // If not complete after first check, set up a polling interval
+          if (!isComplete) {
+            // Check every 10 seconds
+            const intervalId = setInterval(async () => {
+              console.log("Polling for completion...");
+              const isComplete = await checkCompletion();
+              if (isComplete) {
+                console.log("Processing complete, clearing interval");
+                clearInterval(intervalId);
+                checkIntervalRef.current = null;
+              }
+            }, 10000); // Check every 10 seconds
+            
+            // Store the interval ID for cleanup
+            checkIntervalRef.current = intervalId;
+          }
+        }, 5000);
       } else {
         setUploadSuccess(`PDF uploaded successfully: ${data.pdf.originalFilename}`);
       }
-      
-      // Refresh the user's PDFs list
-      fetchUserPdfs();
       
       // Reset the file input
       if (fileInputRef.current) {
@@ -233,6 +335,7 @@ const Dashboard = ({
       console.error('Error uploading PDF:', error);
       setUploadError(`Error uploading PDF: ${error.message}`);
       setIsUploading(false);
+      setIsProcessingTemplate(false);
     }
   };
   
@@ -621,7 +724,7 @@ const Dashboard = ({
     // Stop event propagation to prevent the modal from closing
     event.stopPropagation();
     
-    if (window.confirm(`Are you sure you want to delete the template "${template.originalFilename}"?`)) {
+    if (window.confirm(`Are you sure you want to delete the template "${template.originalFilename.replace(/\.pdf$/i, '')}"?`)) {
       try {
         const response = await fetch(`/api/templates/${encodeURIComponent(template.originalFilename)}?user_id=${user.id}`, {
           method: 'DELETE',
@@ -630,7 +733,7 @@ const Dashboard = ({
         if (response.ok) {
           // Remove the template from the templates list
           setTemplates(templates.filter(t => t.originalFilename !== template.originalFilename));
-          setUploadSuccess(`Template "${template.originalFilename}" deleted successfully`);
+          setUploadSuccess(`Template "${template.originalFilename.replace(/\.pdf$/i, '')}" deleted successfully`);
           setTimeout(() => setUploadSuccess(''), 3000);
         } else {
           const errorData = await response.json();
@@ -666,6 +769,17 @@ const Dashboard = ({
 
   return (
     <div className="app">
+      {/* Show loading overlay when processing template */}
+      {isProcessingTemplate && (
+        <LoadingOverlay 
+          message={processingMessage} 
+          onDismiss={() => {
+            setIsProcessingTemplate(false);
+            setUploadSuccess(`Template processing started for "${lastUploadedPdf?.originalFilename}". It will be available soon.`);
+          }}
+        />
+      )}
+      
       <div className="sparkle"></div>
       <div className="sparkle"></div>
       <div className="sparkle"></div>
@@ -829,7 +943,7 @@ const Dashboard = ({
                 {templates.slice(0, 3).map((template, index) => (
                   <div className="recent-form-item" key={index}>
                     <div className="recent-form-info">
-                      <span className="recent-form-name">{template.originalFilename}</span>
+                      <span className="recent-form-name">{template.originalFilename.replace(/\.pdf$/i, '')}</span>
                       <span className="recent-form-date">
                         {new Date(template.updatedAt).toLocaleDateString()}
                       </span>
@@ -1487,7 +1601,7 @@ const Dashboard = ({
                   {templates.map((template, index) => (
                     <div key={index} className="template-item">
                       <div className="template-item-header">
-                        <div className="template-item-name">{template.originalFilename}</div>
+                        <div className="template-item-name">{template.originalFilename.replace(/\.pdf$/i, '')}</div>
                         <div className="template-item-date">
                           Updated: {new Date(template.updatedAt).toLocaleDateString()}
                         </div>

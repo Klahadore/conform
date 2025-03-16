@@ -6,7 +6,7 @@ python-multipart==0.0.6
 pydantic==2.4.2
 
 # Database
-sqlite3==3.42.0
+# sqlite3 is a built-in Python module and doesn't need to be installed
 
 # PDF processing
 PyPDF2==3.0.1
