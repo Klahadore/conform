@@ -264,7 +264,7 @@ def convert_to_typeform(html_content):
     return typeform_html
 
 
-def chain1(pdf_path, coordinates, hospital_system=None):
+def chain1(pdf_path, field_mapping_string, hospital_system=None):
     """Process a PDF and generate HTML"""
     try:
         print(f"chain1 processing started for {pdf_path}")
@@ -297,7 +297,7 @@ def chain1(pdf_path, coordinates, hospital_system=None):
 
         # Process the PDF and generate HTML
         pdf_form = pathlib.Path(pdf_path)
-        html_form_initial = generate_form(pdf_form, coordinates)
+        html_form_initial = generate_form(pdf_form, field_mapping_string)
         validated_form = validate_form(pdf_form, html_form_initial)
         html_content = convert_to_typeform(validated_form)
 

@@ -92,6 +92,36 @@ def fill_pdf(input_pdf, output_pdf, json_data):
     
     print(f"Saved filled PDF to '{output_pdf}'")
 
+def generate_field_mapping_string(pdf_path):
+    """
+    Generates a formatted string listing all form fields in a PDF with their page number,
+    field name, and coordinates.
+    
+    Args:
+        pdf_path (str): Path to the PDF file
+        
+    Returns:
+        str: A formatted string with numbered entries for each field in the format:
+             "1: Page X, Field Name, (x, y)"
+    """
+    # Get the text fields from the PDF
+    text_fields = list_pdf_text_fields(pdf_path)
+    
+    # Create the formatted string
+    result_lines = []
+    for i, (page_num, field_name, coords) in enumerate(text_fields, start=1):
+        # Extract the center point (x, y) from the rectangle coordinates
+        x1, y1, x2, y2 = coords
+        center_x = (x1 + x2) // 2
+        center_y = (y1 + y2) // 2
+        
+        # Format the line
+        line = f"{i}: Page {page_num}, {field_name}, ({center_x}, {center_y})"
+        result_lines.append(line)
+    
+    # Join all lines into a single string
+    return "\n".join(result_lines)
+
 if __name__ == "__main__":
     input_pdf = "sterilization.pdf"
     output_pdf = "filled_sterilization.pdf"

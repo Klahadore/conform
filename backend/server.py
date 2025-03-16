@@ -201,23 +201,20 @@ processing_status: Dict[str, bool] = {}
 
 # Background task to process PDF
 def process_pdf_background(pdf_path: str, hospital_system: str):
+    """Process a PDF in the background and generate HTML"""
+    # Extract the original filename from the path
+    original_filename = os.path.basename(pdf_path)
+    
     try:
-        original_filename = os.path.basename(pdf_path)
-        processing_status[original_filename] = False  # Not completed yet
+        print(f"Starting background processing for {original_filename}")
         
-        print(f"===== STARTING BACKGROUND PROCESSING =====")
-        print(f"PDF Path: {pdf_path}")
-        print(f"Hospital System: {hospital_system}")
-        print(f"Original Filename: {original_filename}")
+        # Import the pdf_utils module
+        import pdf_utils
         
-        # Check if the file exists
-        if not os.path.exists(pdf_path):
-            print(f"ERROR: PDF file does not exist at path: {pdf_path}")
-            processing_status[original_filename] = True
-            return
-        
-        # Extract coordinates from PDF (this is a placeholder, you'd need to implement this)
-        coordinates = ""
+        # Generate the field mapping string
+        print(f"Generating field mapping string for {pdf_path}")
+        field_mapping_string = pdf_utils.generate_field_mapping_string(pdf_path)
+        print(f"Field mapping string generated:\n{field_mapping_string}")
         
         # Import chain1 function to ensure it's available
         print("Importing chain1 function...")
@@ -230,9 +227,8 @@ def process_pdf_background(pdf_path: str, hospital_system: str):
             return
         
         # Process the PDF with chain1
-        print(f"Calling chain1 function with pdf_path={pdf_path}, coordinates={coordinates}, hospital_system={hospital_system}")
-        result = process_chain(pdf_path, coordinates, hospital_system)
-        
+        print(f"Calling chain1 function with pdf_path={pdf_path}, field_mapping_string={field_mapping_string}, hospital_system={hospital_system}")
+        result = process_chain(pdf_path, field_mapping_string, hospital_system)
         # Update processing status
         processing_status[original_filename] = True
         
