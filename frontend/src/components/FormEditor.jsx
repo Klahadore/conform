@@ -18,7 +18,9 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Check if this is a filled form
-  const isFilledForm = form && form.isFilledForm;
+  const [isFilledForm, setIsFilledForm] = useState(false);
+  // Add state for filled form ID
+  const [filledFormId, setFilledFormId] = useState(null);
 
   // Add a state to track if the iframe has loaded
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -26,14 +28,17 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
   useEffect(() => {
     // Load HTML content when component mounts or form changes
     if (form) {
-      if (isFilledForm) {
+      if (form.isFilledForm) {
         // For filled forms, we already have the URL
+        setIsFilledForm(true);
+        setFilledFormId(form.id);
         setIsLoading(false);
       } else {
+        setIsFilledForm(false);
         loadHtmlContent();
       }
     }
-  }, [form, isFilledForm]);
+  }, [form]);
 
   // Parse HTML content when it changes
   useEffect(() => {
@@ -283,16 +288,25 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     // Set submitting state to show loading indicator
     setIsSubmitting(true);
     
-    // Send the data to the backend
-    fetch('/api/submit-form', {
+    // Create a filled form HTML representation
+    const filledFormHtml = createFilledFormHtml();
+    
+    // Prepare submission data with all required fields
+    const submissionData = {
+      ...formData,
+      form_id: form?.id,
+      user_id: user?.id,
+      patient_id: form?.patientId || null,
+      htmlContent: filledFormHtml
+    };
+    
+    // Send the data to the backend using the send_form endpoint
+    fetch('/send_form', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        formId: form?.id,
-        formData: formData
-      })
+      body: JSON.stringify(submissionData)
     })
     .then(response => {
       if (response.ok) {
@@ -317,6 +331,85 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
       setIsSubmitting(false);
       alert('Error submitting form. Please try again.');
     });
+  };
+  
+  // Function to create a filled form HTML representation
+  const createFilledFormHtml = () => {
+    // If we already have HTML content for a filled form, return it
+    if (isFilledForm && form.htmlContent) {
+      return form.htmlContent;
+    }
+    
+    // Otherwise, create a new HTML representation with the filled data
+    try {
+      // Create a copy of the parsed HTML content
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(parsedHtmlContent, 'text/html');
+      
+      // Fill in the form fields with the form data
+      Object.entries(formData).forEach(([key, value]) => {
+        const elements = doc.querySelectorAll(`[id="${key}"], [name="${key}"]`);
+        
+        elements.forEach(element => {
+          if (element.tagName === 'INPUT') {
+            if (element.type === 'checkbox' || element.type === 'radio') {
+              element.checked = value === true || value === 'on' || value === element.value;
+            } else {
+              element.value = value;
+            }
+          } else if (element.tagName === 'SELECT') {
+            element.value = value;
+          } else if (element.tagName === 'TEXTAREA') {
+            element.value = value;
+          }
+        });
+      });
+      
+      // Add a header to indicate this is a filled form
+      const formTitle = form?.title || 'Form';
+      const patientName = form?.patientName || '';
+      
+      const headerDiv = doc.createElement('div');
+      headerDiv.className = 'filled-form-header';
+      headerDiv.style.backgroundColor = '#f0f0f0';
+      headerDiv.style.padding = '15px';
+      headerDiv.style.marginBottom = '20px';
+      headerDiv.style.borderRadius = '5px';
+      headerDiv.style.border = '1px solid #ddd';
+      
+      const titleElement = doc.createElement('h2');
+      titleElement.textContent = formTitle;
+      titleElement.style.margin = '0 0 10px 0';
+      headerDiv.appendChild(titleElement);
+      
+      if (patientName) {
+        const patientElement = doc.createElement('p');
+        patientElement.textContent = `Patient: ${patientName}`;
+        patientElement.style.margin = '0';
+        headerDiv.appendChild(patientElement);
+      }
+      
+      const timestampElement = doc.createElement('p');
+      timestampElement.textContent = `Filled on: ${new Date().toLocaleString()}`;
+      timestampElement.style.margin = '5px 0 0 0';
+      timestampElement.style.fontSize = '0.9em';
+      headerDiv.appendChild(timestampElement);
+      
+      // Insert the header at the beginning of the body
+      const body = doc.body;
+      if (body.firstChild) {
+        body.insertBefore(headerDiv, body.firstChild);
+      } else {
+        body.appendChild(headerDiv);
+      }
+      
+      // Return the serialized HTML
+      return new XMLSerializer().serializeToString(doc);
+    } catch (error) {
+      console.error('Error creating filled form HTML:', error);
+      // If there's an error, return the original HTML content
+      return parsedHtmlContent;
+    }
   };
 
   // Function to load HTML content
@@ -550,6 +643,36 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
     );
   };
 
+  // Function to download the filled PDF
+  const handleDownloadPDF = () => {
+    // Get the submission ID from form data
+    let formId = filledFormId || (form && form.id);
+    
+    if (!formId) {
+      // If no ID is available, use a default ID of 1
+      formId = 1;
+      console.log("No form ID available, using default ID: 1");
+    }
+    
+    // Remove any "filled_" prefix if present
+    if (typeof formId === 'string' && formId.startsWith('filled_')) {
+      formId = formId.replace('filled_', '');
+    }
+    
+    // Use the absolute path to the PDF file
+    const absolutePdfPath = `/Users/jibranhutchins/Developer/conform/backend/html_outputs/filled_pdfs/filled_form_${formId}.pdf`;
+    
+    // Show the absolute path in an alert
+    alert(`PDF Absolute Path:\n${absolutePdfPath}\n\nPlease open this file manually.`);
+    
+    // Try to open the file directly using the file:// protocol
+    // Note: This may not work in all browsers due to security restrictions
+    window.open(`file://${absolutePdfPath}`, '_blank');
+    
+    // Also try the API endpoint as a fallback
+    window.open(`/api/pdf-preview?path=${encodeURIComponent(absolutePdfPath)}`, '_blank');
+  };
+
   return (
     <div className="app">
       <div className="sparkle"></div>
@@ -620,6 +743,20 @@ const FormEditor = ({ user, onLogout, onToggleSidebar, onSaveForm, onCancel, for
                 {isSubmitting ? 'Saving...' : 'Save Form'}
               </button>
             )}
+
+<button
+  className="form-editor-button primary"
+  onClick={() =>
+    window.open(
+      'file:///Users/jibranhutchins/Developer/conform/backend/html_outputs/filled_pdfs/filled_form_1.pdf',
+      '_blank'
+    )
+  }
+>
+  Download PDF
+</button>
+
+
           </div>
         </div>
       </div>

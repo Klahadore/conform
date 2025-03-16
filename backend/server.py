@@ -26,9 +26,11 @@ app = FastAPI()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", 
+                  "http://localhost:6969", "http://127.0.0.1:6969",
+                  "*"],  # Allow all origins temporarily for testing
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -41,6 +43,7 @@ DB_PATH = os.path.join(BASE_DIR, "conform.db")
 # Create directories if they don't exist
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
+os.makedirs(os.path.join(HTML_OUTPUT_DIR, "filled_pdfs"), exist_ok=True)
 
 # Mount the directories to make files accessible
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
@@ -2298,68 +2301,323 @@ def get_filled_form(filename: str, user_id: int):
         print(f"Error getting filled form: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get filled form: {str(e)}")
 
-@app.post("/api/submit-form")
-async def submit_form(request: Request):
+@app.post("/send_form")
+async def send_form(request: Request):
     """
-    Handle form submissions from the FormEditor component.
-    Receives form data as JSON and saves it to the database.
+    Handle form submissions and generate filled PDFs.
+    Only processes the integer key → value mapping from form fields.
     """
     try:
-        # Parse the request body
-        data = await request.json()
-        form_id = data.get("formId")
-        form_data = data.get("formData")
+        # Parse the request body - this is the direct mapping of field IDs to values
+        form_data = await request.json()
+        print(f"Received form submission: {form_data}")
         
-        if not form_data:
-            raise HTTPException(status_code=400, detail="Missing form data")
+        # Use default values for required database fields
+        user_id = 1  # Default user
+        patient_id = 1  # Default patient
+        pdf_id = 1  # Default PDF ID
         
-        print(f"Received form submission for form ID: {form_id}")
-        print(f"Form data: {form_data}")
+        # Convert form data to JSON string
+        form_data_json = json.dumps(form_data)
         
+        # Generate a unique filename for the filled form
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        filled_filename = f"filled_form_{timestamp}.json"
+        
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Insert into filled_forms table with default values for required fields
+        cursor.execute(
+            """
+            INSERT INTO filled_forms (user_id, patient_id, pdf_id, filled_data, filled_filename)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (user_id, patient_id, pdf_id, form_data_json, filled_filename)
+        )
+        
+        conn.commit()
+        submission_id = cursor.lastrowid
+        
+        # Generate filled PDF using pdf_utils.py
+        try:
+            from pdf_utils import fill_pdf
+            
+            # Use the default sterilization form template
+            test_files_dir = os.path.join(BASE_DIR, "test_files")
+            pdf_path = os.path.join(test_files_dir, "sterilization_form.pdf")
+            
+            if os.path.exists(pdf_path):
+                # Generate output PDF path
+                pdf_output_dir = os.path.join(HTML_OUTPUT_DIR, "filled_pdfs")
+                os.makedirs(pdf_output_dir, exist_ok=True)
+                
+                # Use a predictable filename pattern based on the submission ID
+                pdf_filename = f"filled_form_{submission_id}.pdf"
+                output_pdf_path = os.path.join(pdf_output_dir, pdf_filename)
+                
+                # Fill the PDF with the form data - direct integer key to value mapping
+                fill_pdf(pdf_path, output_pdf_path, form_data)
+                
+                # Update the database with the PDF filename
+                cursor.execute(
+                    "UPDATE filled_forms SET filled_pdf_filename = ? WHERE id = ?",
+                    (pdf_filename, submission_id)
+                )
+                conn.commit()
+                print(f"Generated filled PDF: {output_pdf_path}")
+                
+                # Return the PDF URL in the response
+                pdf_url = f"/html_outputs/filled_pdfs/{pdf_filename}"
+            else:
+                print(f"PDF template not found: {pdf_path}")
+                pdf_url = None
+        except Exception as e:
+            print(f"Error generating filled PDF: {str(e)}")
+            traceback.print_exc()
+            pdf_url = None
+        
+        conn.close()
+        
+        # Return success response with the submission_id and PDF URL
+        return {
+            "success": True,
+            "message": "Form submitted successfully",
+            "submission_id": submission_id,
+            "pdf_url": pdf_url
+        }
+        
+    except Exception as e:
+        print(f"Error processing form submission: {str(e)}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to process form submission: {str(e)}")
+
+@app.get("/api/user/{user_id}/filled-forms-json")
+def get_user_filled_forms_json(user_id: int):
+    """Get all filled forms for a user with JSON data"""
+    try:
         # Connect to the database
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Check if we need to create a new form submissions table
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS form_submissions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            form_id TEXT,
-            submission_data TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """)
-        
-        # Insert the form submission
+        # Get all filled forms for the user
         cursor.execute(
             """
-            INSERT INTO form_submissions (form_id, submission_data)
-            VALUES (?, ?)
+            SELECT ff.*, p.name as patient_name
+            FROM filled_forms ff
+            LEFT JOIN patients p ON ff.patient_id = p.id
+            WHERE ff.user_id = ?
+            ORDER BY ff.created_at DESC
             """,
-            (str(form_id), json.dumps(form_data))
+            (user_id,)
         )
         
-        # Commit the changes
-        conn.commit()
+        filled_forms = []
+        for row in cursor.fetchall():
+            # Parse the filled_data JSON
+            filled_data = json.loads(row['filled_data']) if row['filled_data'] else {}
+            
+            # Create a filled form object
+            filled_form = {
+                "id": row['id'],
+                "user_id": row['user_id'],
+                "patient_id": row['patient_id'],
+                "patient_name": row['patient_name'],
+                "pdf_id": row['pdf_id'],
+                "filled_data": filled_data,
+                "filled_filename": row['filled_filename'],
+                "created_at": row['created_at']
+            }
+            
+            # Add the HTML content if available
+            if row['filled_filename'] and row['filled_filename'].endswith('.html'):
+                try:
+                    html_path = os.path.join(HTML_OUTPUT_DIR, "filled_forms", row['filled_filename'])
+                    if os.path.exists(html_path):
+                        with open(html_path, 'r', encoding='utf-8') as f:
+                            filled_form['html_content'] = f.read()
+                except Exception as e:
+                    print(f"Error reading HTML file: {str(e)}")
+            
+            filled_forms.append(filled_form)
         
-        # Get the ID of the inserted submission
-        submission_id = cursor.lastrowid
-        
-        # Close the database connection
         conn.close()
         
-        return {
-            "success": True,
-            "message": "Form submitted successfully",
-            "submission_id": submission_id
+        return {"filled_forms": filled_forms}
+    except Exception as e:
+        print(f"Error getting filled forms: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get filled forms: {str(e)}")
+
+@app.get("/api/filled-form-json/{form_id}")
+def get_filled_form_json(form_id: int):
+    """Get a specific filled form with JSON data"""
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get the filled form
+        cursor.execute(
+            """
+            SELECT ff.*, p.name as patient_name
+            FROM filled_forms ff
+            LEFT JOIN patients p ON ff.patient_id = p.id
+            WHERE ff.id = ?
+            """,
+            (form_id,)
+        )
+        
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"Filled form with ID {form_id} not found")
+        
+        # Parse the filled_data JSON
+        filled_data = json.loads(row['filled_data']) if row['filled_data'] else {}
+        
+        # Create a filled form object
+        filled_form = {
+            "id": row['id'],
+            "user_id": row['user_id'],
+            "patient_id": row['patient_id'],
+            "patient_name": row['patient_name'],
+            "pdf_id": row['pdf_id'],
+            "filled_data": filled_data,
+            "filled_filename": row['filled_filename'],
+            "created_at": row['created_at']
         }
         
+        # Add the HTML content if available
+        if row['filled_filename'] and row['filled_filename'].endswith('.html'):
+            try:
+                html_path = os.path.join(HTML_OUTPUT_DIR, "filled_forms", row['filled_filename'])
+                if os.path.exists(html_path):
+                    with open(html_path, 'r', encoding='utf-8') as f:
+                        filled_form['html_content'] = f.read()
+            except Exception as e:
+                print(f"Error reading HTML file: {str(e)}")
+        
+        conn.close()
+        
+        return filled_form
     except Exception as e:
-        print(f"Error submitting form: {str(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Failed to submit form: {str(e)}")
+        print(f"Error getting filled form: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get filled form: {str(e)}")
+
+# Add a CORS middleware specifically for the /send_form endpoint
+@app.middleware("http")
+async def add_cors_headers_for_send_form(request, call_next):
+    # Handle OPTIONS preflight requests for /send_form
+    if request.method == "OPTIONS" and request.url.path == "/send_form":
+        response = Response(
+            status_code=200,
+            content="",
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                "Access-Control-Max-Age": "86400",  # 24 hours
+            },
+        )
+        return response
+        
+    # For all other requests, proceed normally
+    response = await call_next(request)
+    
+    # Add CORS headers to /send_form responses
+    if request.url.path == "/send_form":
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    
+    return response
+
+@app.get("/api/filled-pdf/{form_id}")
+async def get_filled_pdf(form_id: int, request: Request):
+    """Get the filled PDF file for a form"""
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # First, check if the filled_pdf_filename column exists
+        cursor.execute("PRAGMA table_info(filled_forms)")
+        columns = cursor.fetchall()
+        column_names = [column[1] for column in columns]
+        
+        # If filled_pdf_filename doesn't exist, add it
+        if 'filled_pdf_filename' not in column_names:
+            cursor.execute('ALTER TABLE filled_forms ADD COLUMN filled_pdf_filename TEXT')
+            conn.commit()
+            print("Added filled_pdf_filename column to filled_forms table")
+        
+        # Get the filled form record
+        cursor.execute(
+            """
+            SELECT filled_pdf_filename
+            FROM filled_forms
+            WHERE id = ?
+            """,
+            (form_id,)
+        )
+        
+        form = cursor.fetchone()
+        conn.close()
+        
+        if not form or not form['filled_pdf_filename']:
+            raise HTTPException(status_code=404, detail=f"Filled PDF not found for form ID {form_id}")
+        
+        # Construct the path to the PDF file
+        pdf_path = os.path.join(HTML_OUTPUT_DIR, "filled_pdfs", form['filled_pdf_filename'])
+        
+        if not os.path.exists(pdf_path):
+            raise HTTPException(status_code=404, detail=f"PDF file not found: {form['filled_pdf_filename']}")
+        
+        # For HEAD requests, just return a 200 OK response
+        if request.method == "HEAD":
+            return Response(status_code=200)
+        
+        # For GET requests, return the file
+        return Response(
+            content=open(pdf_path, "rb").read(),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename={form['filled_pdf_filename']}"
+            }
+        )
+    except Exception as e:
+        print(f"Error getting filled PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get filled PDF: {str(e)}")
+
+@app.get("/api/pdf-preview")
+async def get_pdf_preview(path: str):
+    """Serve a PDF file from an absolute path"""
+    try:
+        # Check if the file exists
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail=f"PDF file not found: {path}")
+        
+        # Read the file
+        with open(path, "rb") as f:
+            content = f.read()
+        
+        # Return the file as a response
+        return Response(
+            content=content,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"inline; filename={os.path.basename(path)}"
+            }
+        )
+    except Exception as e:
+        print(f"Error serving PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to serve PDF: {str(e)}")
+
+# Add this endpoint right after the get_filled_pdf endpoint
 
 if __name__ == "__main__":
     # Create hospital system directories at startup
