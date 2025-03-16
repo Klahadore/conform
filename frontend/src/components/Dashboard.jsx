@@ -53,6 +53,8 @@ const Dashboard = ({
   const [htmlReady, setHtmlReady] = useState(false);
   const [htmlUrl, setHtmlUrl] = useState(null);
   const checkIntervalRef = useRef(null);
+  const [templates, setTemplates] = useState([]);
+  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   
   // Add a cleanup effect to clear the interval when component unmounts
   useEffect(() => {
@@ -74,13 +76,14 @@ const Dashboard = ({
   
   const fetchUserPdfs = async () => {
     try {
-      const response = await fetch(`/api/user/${user.id}/pdfs`);
+      const response = await fetch(`/api/user/${user.id}/filled-forms`);
       if (response.ok) {
         const data = await response.json();
-        setUserPdfs(data.pdfs);
+        setUserPdfs(data.filledForms || []);
       }
     } catch (error) {
-      console.error('Error fetching user PDFs:', error);
+      console.error('Error fetching filled forms:', error);
+      setUserPdfs([]);
     }
   };
   
@@ -132,8 +135,12 @@ const Dashboard = ({
   const handleCreateForm = () => {
     // Reset the last uploaded PDF when clicking to upload a new one
     setLastUploadedPdf(null);
-    // Instead of opening the file picker directly, show the patient assignment popup first
-    setShowPatientAssignmentPopup(true);
+    
+    // Open the file picker directly instead of showing the patient assignment popup
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+    
     scrollToTop();
   };
   
@@ -158,11 +165,6 @@ const Dashboard = ({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('user_id', user.id);
-      
-      // If a patient is selected, add the patient_id to the form data
-      if (selectedPatient) {
-        formData.append('patient_id', selectedPatient);
-      }
       
       console.log('Sending upload request...');
       const response = await fetch('/api/upload-pdf', {
@@ -562,6 +564,78 @@ const Dashboard = ({
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      if (!user || !user.id) return;
+      
+      const response = await fetch(`/api/user/${user.id}/templates`);
+      if (response.ok) {
+        const data = await response.json();
+        setTemplates(data.templates);
+      } else {
+        console.error('Error fetching templates:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchTemplates();
+    }
+  }, [user]);
+
+  // Update the handleUseTemplate function
+  const handleUseTemplate = (template) => {
+    // Create a form object from the template
+    const formData = {
+      title: template.originalFilename.replace('.pdf', ''),
+      originalFilename: template.originalFilename,
+      filename: template.originalFilename,
+      pdfFilename: template.originalFilename,
+      htmlFilename: template.htmlFilename
+    };
+    
+    // Set the form to be edited
+    setFormToEdit(formData);
+    
+    // Close the templates modal
+    setShowTemplatesModal(false);
+    
+    // Open the patient assignment modal instead of the form editor
+    setShowPatientAssignmentPopup(true);
+  };
+
+  // Add this function to handle template deletion
+  const handleDeleteTemplate = async (template, event) => {
+    // Stop event propagation to prevent the modal from closing
+    event.stopPropagation();
+    
+    if (window.confirm(`Are you sure you want to delete the template "${template.originalFilename}"?`)) {
+      try {
+        const response = await fetch(`/api/templates/${encodeURIComponent(template.originalFilename)}?user_id=${user.id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Remove the template from the templates list
+          setTemplates(templates.filter(t => t.originalFilename !== template.originalFilename));
+          setUploadSuccess(`Template "${template.originalFilename}" deleted successfully`);
+          setTimeout(() => setUploadSuccess(''), 3000);
+        } else {
+          const errorData = await response.json();
+          setUploadError(`Error deleting template: ${errorData.detail}`);
+          setTimeout(() => setUploadError(''), 3000);
+        }
+      } catch (error) {
+        console.error('Error deleting template:', error);
+        setUploadError(`Error deleting template: ${error.message}`);
+        setTimeout(() => setUploadError(''), 3000);
+      }
+    }
+  };
+
   if (showFormEditor) {
     // Find the form to edit
     const formToEdit = currentFormId ? forms.find(form => form.id === currentFormId) : null;
@@ -654,7 +728,7 @@ const Dashboard = ({
         )}
 
         <div className="dashboard-section">
-          <h2 style={{ color: 'white' }}>Upload Fillable Form</h2>
+          <h2 style={{ color: 'white' }}>Create Form Template</h2>
           <div className="forms-grid">
             <div 
               className="create-form-card" 
@@ -678,6 +752,9 @@ const Dashboard = ({
               }}
             >
               <div className="upload-icon">+</div>
+              <div className="upload-subtext">
+                Upload a PDF Form
+              </div>
             </div>
             
             {isUploading && (
@@ -698,10 +775,9 @@ const Dashboard = ({
             )}
           </div>
         </div>
-
         <div className="dashboard-grid">
           <div className="dashboard-card">
-            <h2>Recent Forms</h2>
+            <h2>Recently Filled Forms</h2>
             {userPdfs.length > 0 ? (
               <div className="recent-forms-list">
                 {userPdfs.slice(0, 3).map(pdf => (
@@ -733,16 +809,42 @@ const Dashboard = ({
               className="dashboard-button view-all-button"
               onClick={handleViewAllForms}
             >
-              View All Forms
+              View All Filled Forms
             </button>
           </div>
 
           <div className="dashboard-card">
-            <h2>Saved Templates</h2>
-            <div className="empty-state">No templates displayed</div>
-            <div className="template-create-button" onClick={() => console.log('Create template')}>
-              <div className="template-create-icon">+</div>
-            </div>
+            <h2>{user?.hospitalSystem || 'Your'} Templates</h2>
+            {templates.length > 0 ? (
+              <div className="recent-forms-list">
+                {templates.slice(0, 3).map((template, index) => (
+                  <div className="recent-form-item" key={index}>
+                    <div className="recent-form-info">
+                      <span className="recent-form-name">{template.originalFilename}</span>
+                      <span className="recent-form-date">
+                        {new Date(template.updatedAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="recent-form-actions">
+                      <button 
+                        className="form-card-action use-template"
+                        onClick={() => handleUseTemplate(template)}
+                      >
+                        Use
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="recent-forms-empty">No templates available</p>
+            )}
+            <button 
+              className="dashboard-button view-all-button"
+              onClick={() => setShowTemplatesModal(true)}
+            >
+              View All Templates
+            </button>
           </div>
 
           <div className="dashboard-card">
@@ -1347,6 +1449,58 @@ const Dashboard = ({
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Templates Modal */}
+      {showTemplatesModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2>{user?.hospitalSystem || 'Your'} Templates</h2>
+              <button 
+                className="close-button"
+                onClick={() => setShowTemplatesModal(false)}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {templates.length === 0 ? (
+                <div className="empty-state">
+                  No templates found for your healthcare system.
+                </div>
+              ) : (
+                <div className="templates-grid">
+                  {templates.map((template, index) => (
+                    <div key={index} className="template-item">
+                      <div className="template-item-header">
+                        <div className="template-item-name">{template.originalFilename}</div>
+                        <div className="template-item-date">
+                          Updated: {new Date(template.updatedAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div className="template-item-actions">
+                        <button 
+                          className="action-button submit-button"
+                          onClick={() => handleUseTemplate(template)}
+                        >
+                          Use Template
+                        </button>
+                        <button 
+                          className="action-button delete-button"
+                          onClick={(e) => handleDeleteTemplate(template, e)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

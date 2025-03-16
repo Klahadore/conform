@@ -13,6 +13,7 @@ import json
 import shutil
 from chains.chain1 import chain1
 import pathlib
+import time
 
 # Create the FastAPI app
 app = FastAPI()
@@ -339,7 +340,6 @@ def update_user(
 async def upload_pdf(
     file: UploadFile = File(...),
     user_id: int = Form(...),
-    patient_id: Optional[int] = Form(None),
 ):
     try:
         # Create a new database connection for this request
@@ -347,160 +347,121 @@ async def upload_pdf(
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Verify the user exists and get full name
-        cursor.execute("SELECT name FROM users WHERE id = ?", (user_id,))
+        # Verify the user exists and get full name and hospital system
+        cursor.execute("SELECT name, hospital_system FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         
         if not user:
             conn.close()
             raise HTTPException(status_code=404, detail="User not found")
         
+        hospital_system = user['hospital_system']
+        
         # Get patient name if patient_id is provided
         patient_name = None
-        if patient_id:
-            cursor.execute("SELECT name FROM patients WHERE id = ?", (patient_id,))
-            patient = cursor.fetchone()
-            if patient:
-                patient_name = patient['name']
-                print(f"Using patient name: {patient_name}")
-            else:
-                print(f"Patient with ID {patient_id} not found")
-                patient_id = None  # Reset patient_id if patient not found
         
-        # Check if the file is a PDF
-        if not file.filename.lower().endswith('.pdf'):
-            conn.close()
-            raise HTTPException(status_code=400, detail="Only PDF files are allowed")
-        
-        # Use the original filename without renaming
+        # Use the original filename without modification
         original_filename = file.filename
         
-        # Make sure the filename is secure
-        secure_filename = re.sub(r'[^\w\s.-]', '', original_filename)
-        secure_filename = re.sub(r'\s+', '_', secure_filename)
+        # Create the uploads directory if it doesn't exist
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         
-        # Instead of adding a counter, overwrite existing files with the same name
-        file_path = os.path.join(UPLOAD_DIR, secure_filename)
+        # Write the file to disk with the original filename
+        file_path = os.path.join(UPLOAD_DIR, original_filename)
         
         # If the file already exists, remove it first
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"Removed existing file: {file_path}")
         
-        # Save the file to disk with the secure filename
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         
-        # Check if the PDF is fillable
-        is_fillable = is_pdf_fillable(file_path)
-        print(f"PDF is fillable: {is_fillable}")
-        
-        # Check if this original filename exists in the universal_pdfs table
+        # Check if this PDF already exists in the universal_pdfs table
         cursor.execute(
-            "SELECT id, html_content, html_filename FROM universal_pdfs WHERE original_filename = ?",
+            "SELECT id, html_filename, hospital_system FROM universal_pdfs WHERE original_filename = ?",
             (original_filename,)
         )
+        existing_pdf = cursor.fetchone()
         
-        universal_pdf = cursor.fetchone()
+        # If the template already exists, delete the old HTML file and database record
+        if existing_pdf:
+            # Delete the old HTML file if it exists
+            if existing_pdf['html_filename']:
+                # Try to delete from the hospital system directory first
+                if existing_pdf['hospital_system']:
+                    safe_hospital_system = re.sub(r'[^\w\s-]', '', existing_pdf['hospital_system']).strip().replace(' ', '_')
+                    hospital_html_path = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system, existing_pdf['html_filename'])
+                    if os.path.exists(hospital_html_path):
+                        os.remove(hospital_html_path)
+                        print(f"Deleted old HTML file from hospital system directory: {hospital_html_path}")
+                
+                # Also check the root directory
+                root_html_path = os.path.join(HTML_OUTPUT_DIR, existing_pdf['html_filename'])
+                if os.path.exists(root_html_path):
+                    os.remove(root_html_path)
+                    print(f"Deleted old HTML file from root directory: {root_html_path}")
+            
+            # Delete the old record from the universal_pdfs table
+            cursor.execute("DELETE FROM universal_pdfs WHERE id = ?", (existing_pdf['id'],))
+            print(f"Deleted old template record for: {original_filename}")
         
-        # Check if the HTML file actually exists in the html_outputs directory
-        has_html_content = universal_pdf and universal_pdf['html_content'] is not None
-        has_html_filename = universal_pdf and universal_pdf['html_filename'] is not None
+        has_html = False
         
-        html_file_exists = False
-        if has_html_filename:
-            html_path = os.path.join(HTML_OUTPUT_DIR, universal_pdf['html_filename'])
-            html_file_exists = os.path.exists(html_path)
-        
-        # Only consider it as having HTML if both the database record and file exist
-        has_html = has_html_content and has_html_filename and html_file_exists
-        
-        # If the HTML file doesn't exist but we have a record, update the database
-        if has_html_content and has_html_filename and not html_file_exists:
-            cursor.execute(
-                "UPDATE universal_pdfs SET html_content = NULL, html_filename = NULL WHERE original_filename = ?",
-                (original_filename,)
-            )
-            conn.commit()
-            has_html = False
-            has_html_content = False
-            has_html_filename = False
-        
-        # Save the PDF information to the database with patient information
+        # Insert the PDF into the database with the original filename as both original_filename and filename
         cursor.execute(
             """
-            INSERT INTO uploaded_pdfs (user_id, filename, original_filename, is_fillable, patient_id, patient_name)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO pdfs (user_id, original_filename, filename, upload_date)
+            VALUES (?, ?, ?, datetime('now'))
             """,
-            (user_id, secure_filename, original_filename, is_fillable, patient_id, patient_name)
+            (user_id, original_filename, original_filename)
         )
-        conn.commit()
         
-        # Get the ID of the newly inserted PDF
         pdf_id = cursor.lastrowid
-        
-        # Get the PDF information
-        cursor.execute(
-            """
-            SELECT id, filename, original_filename, upload_date, patient_id, patient_name, is_fillable
-            FROM uploaded_pdfs
-            WHERE id = ?
-            """,
-            (pdf_id,)
-        )
-        
-        pdf = cursor.fetchone()
-        conn.close()
+        conn.commit()
         
         # Start processing if needed
         processing_started = False
         html_generated = False
         
-        if not has_html:
-            try:
-                # Get the full path to the uploaded PDF
-                pdf_path = os.path.join(UPLOAD_DIR, secure_filename)
-                
-                # Make sure the file exists
-                if not os.path.exists(pdf_path):
-                    raise Exception(f"PDF file not found at {pdf_path}")
-                
-                # Process the PDF synchronously instead of in the background
-                print(f"Starting chain1 processing for {original_filename} at {pdf_path}")
-                result = chain1(pdf_path, "")  # Empty coordinates for now
-                
-                processing_started = True
-                html_generated = result
-                
-                print(f"Finished processing for {original_filename}, result: {result}")
-            except Exception as e:
-                print(f"Error processing PDF: {str(e)}")
-                # Even if there's an error, we'll still return success for the upload
-        else:
-            print(f"HTML already exists for {original_filename}, skipping processing")
-            html_generated = True
+        # Always process the PDF since we've deleted any existing template
+        try:
+            # Get the full path to the uploaded PDF
+            pdf_path = os.path.join(UPLOAD_DIR, original_filename)
+            
+            # Make sure the file exists
+            if not os.path.exists(pdf_path):
+                raise Exception(f"PDF file not found at {pdf_path}")
+            
+            # Process the PDF synchronously instead of in the background
+            print(f"Starting chain1 processing for {original_filename} at {pdf_path}")
+            result = chain1(pdf_path, "", hospital_system)  # Pass the hospital system
+            
+            processing_started = True
+            html_generated = result
+            
+            print(f"Finished processing for {original_filename}, result: {result}")
+        except Exception as e:
+            print(f"Error processing PDF: {str(e)}")
+            # Even if there's an error, we'll still return success for the upload
         
+        # Return success response
         return {
-            "message": "PDF uploaded successfully" + (" and processing started" if processing_started else ""),
+            "success": True,
             "pdf": {
-                "id": pdf['id'],
-                "filename": pdf['filename'],
-                "originalFilename": pdf['original_filename'],
-                "uploadDate": pdf['upload_date'],
-                "url": f"/uploads/{pdf['filename']}",
-                "isFillable": is_fillable,
-                "patientId": pdf['patient_id'],
-                "patientName": pdf['patient_name'],
-                "hasUniversalVersion": universal_pdf is not None,
+                "id": pdf_id,
+                "userId": user_id,
+                "originalFilename": original_filename,
+                "filename": original_filename,
+                "uploadDate": datetime.now().isoformat(),
+                "patientName": patient_name,
                 "processingStarted": processing_started,
-                "hasHtmlContent": has_html_content or html_generated,
-                "hasHtmlFilename": has_html_filename or html_generated,
-                "htmlGenerated": html_generated
+                "htmlGenerated": html_generated,
+                "hasHtmlContent": False,  # Set to False since we're creating a new template
+                "hasHtmlFilename": False  # Set to False since we're creating a new template
             }
         }
     except Exception as e:
-        if 'conn' in locals():
-            conn.close()
         print(f"Error uploading PDF: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to upload PDF: {str(e)}")
 
@@ -1357,28 +1318,44 @@ def get_all_universal_pdfs():
 
 # Endpoint to check if HTML is ready for a PDF
 @app.get("/api/check-html/{original_filename}")
-def check_html_readiness(original_filename: str):
+def check_html_readiness(original_filename: str, user_id: int):
     try:
-        # Extract base name without extension
-        base_name = os.path.splitext(original_filename)[0]
-        html_filename = f"{base_name}.html"
-        html_path = os.path.join(HTML_OUTPUT_DIR, html_filename)
-        
-        # Check if the HTML file exists in the directory
-        html_exists = os.path.exists(html_path)
-        
-        # Check if the database record exists and has HTML content
+        # Get the user's hospital system
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        hospital_system = user['hospital_system']
+        
+        # Check if the database record exists and has HTML content
         cursor.execute(
-            "SELECT html_filename, html_content FROM universal_pdfs WHERE original_filename = ?",
+            "SELECT html_filename, html_content, hospital_system FROM universal_pdfs WHERE original_filename = ?",
             (original_filename,)
         )
         
         pdf = cursor.fetchone()
         conn.close()
+        
+        # If no record or hospital system doesn't match, return not ready
+        if not pdf or pdf['hospital_system'] != hospital_system:
+            return {
+                "ready": False,
+                "htmlFilename": None,
+                "originalFilename": original_filename,
+                "fileExists": False,
+                "dbHasHtml": False
+            }
+        
+        # Check if the HTML file exists in the directory
+        html_path = os.path.join(HTML_OUTPUT_DIR, pdf['html_filename'])
+        html_exists = os.path.exists(html_path)
         
         db_has_html = pdf and pdf['html_filename'] and pdf['html_content']
         
@@ -1396,7 +1373,7 @@ def check_html_readiness(original_filename: str):
         
         return {
             "ready": html_exists and db_has_html,
-            "htmlFilename": html_filename if html_exists else None,
+            "htmlFilename": pdf['html_filename'] if html_exists else None,
             "originalFilename": original_filename,
             "fileExists": html_exists,
             "dbHasHtml": db_has_html
@@ -1411,17 +1388,81 @@ def ensure_db_schema():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Check if html_filename column exists in universal_pdfs table
-    cursor.execute("PRAGMA table_info(universal_pdfs)")
-    columns = cursor.fetchall()
-    column_names = [column[1] for column in columns]
+    # Create users table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        healthcare_title TEXT,
+        hospital_system TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
     
-    # Add html_filename column if it doesn't exist
-    if 'html_filename' not in column_names:
-        print("Adding html_filename column to universal_pdfs table")
-        cursor.execute('ALTER TABLE universal_pdfs ADD COLUMN html_filename TEXT')
-        conn.commit()
+    # Create pdfs table if it doesn't exist
+    # Note: We're keeping patient_id for backward compatibility, but it will be NULL for new uploads
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS pdfs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        patient_id INTEGER,
+        original_filename TEXT NOT NULL,
+        filename TEXT NOT NULL,
+        upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (patient_id) REFERENCES patients (id)
+    )
+    ''')
     
+    # Create patients table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS patients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        user_id INTEGER NOT NULL,
+        email TEXT,
+        dob TEXT,
+        gender TEXT,
+        age TEXT,
+        conditions TEXT,
+        medications TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+    ''')
+    
+    # Create universal_pdfs table if it doesn't exist
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS universal_pdfs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        original_filename TEXT UNIQUE NOT NULL,
+        html_content TEXT,
+        html_filename TEXT,
+        hospital_system TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # Create filled_forms table to track completed forms assigned to patients
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS filled_forms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        patient_id INTEGER NOT NULL,
+        pdf_id INTEGER NOT NULL,
+        filled_data TEXT,
+        filled_filename TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (patient_id) REFERENCES patients (id),
+        FOREIGN KEY (pdf_id) REFERENCES pdfs (id)
+    )
+    ''')
+    
+    conn.commit()
     conn.close()
 
 # Call this function during server startup
@@ -1477,16 +1518,44 @@ async def add_cors_headers_for_html(request, call_next):
     return response
 
 @app.get("/api/html-content/{original_filename}")
-def get_html_content(original_filename: str):
+def get_html_content(original_filename: str, user_id: int):
     try:
-        # Extract base name without extension
-        base_name = os.path.splitext(original_filename)[0]
-        html_filename = f"{base_name}.html"
-        html_path = os.path.join(HTML_OUTPUT_DIR, html_filename)
+        # Get the user's hospital system
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        hospital_system = user['hospital_system']
+        
+        # Get the HTML filename from the database
+        cursor.execute(
+            "SELECT html_filename, hospital_system FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        pdf = cursor.fetchone()
+        conn.close()
+        
+        if not pdf:
+            raise HTTPException(status_code=404, detail=f"HTML record not found for: {original_filename}")
+        
+        # Check if the hospital system matches
+        if pdf['hospital_system'] != hospital_system:
+            raise HTTPException(status_code=403, detail="You don't have permission to access this template")
+        
+        # Construct the full path to the HTML file
+        html_path = os.path.join(HTML_OUTPUT_DIR, pdf['html_filename'])
         
         # Check if the HTML file exists
         if not os.path.exists(html_path):
-            raise HTTPException(status_code=404, detail=f"HTML file not found: {html_filename}")
+            raise HTTPException(status_code=404, detail=f"HTML file not found: {pdf['html_filename']}")
         
         # Read the HTML file
         with open(html_path, "r", encoding="utf-8") as f:
@@ -1496,4 +1565,222 @@ def get_html_content(original_filename: str):
         return Response(content=html_content, media_type="text/html")
     except Exception as e:
         print(f"Error fetching HTML content: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch HTML content: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to fetch HTML content: {str(e)}")
+
+# Add this function to create all hospital system directories
+def create_hospital_system_directories():
+    """Create directories for all hospital systems at startup"""
+    try:
+        # Path to the hospitalSystems.js file
+        js_file_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "src", "data", "hospitalSystems.js")
+        
+        # If the file doesn't exist, use a hardcoded list
+        if not os.path.exists(js_file_path):
+            print(f"Hospital systems file not found at {js_file_path}, using hardcoded list")
+            hospital_systems = [
+                "Kaiser Permanente", "HCA Healthcare", "CommonSpirit", "Advocate Health",
+                "Ascension", "Providence", "UPMC", "Trinity Health", "Tenet Healthcare",
+                "Mass General Brigham", "University of California Medical Centers", "Mayo Clinic",
+                # Add more from the list as needed
+            ]
+        else:
+            # Read the JavaScript file
+            with open(js_file_path, 'r') as f:
+                js_content = f.read()
+            
+            # Extract the array content using a simple regex
+            import re
+            match = re.search(r'\[\s*"([^"]*)"(?:\s*,\s*"([^"]*)")*\s*\]', js_content, re.DOTALL)
+            if match:
+                # Extract all the hospital systems from the regex match
+                hospital_systems_text = match.group(0)
+                # Remove brackets, split by commas, and clean up quotes and whitespace
+                hospital_systems = [
+                    hs.strip().strip('"').strip("'") 
+                    for hs in hospital_systems_text.strip('[]').split(',')
+                ]
+            else:
+                print("Could not parse hospital systems from JS file, using hardcoded list")
+                hospital_systems = ["Default Hospital System"]
+        
+        # Create a directory for each hospital system
+        for hospital_system in hospital_systems:
+            if hospital_system:  # Skip empty strings
+                # Sanitize the hospital system name to be safe for filesystem
+                safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+                hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
+                os.makedirs(hospital_dir, exist_ok=True)
+                print(f"Created directory for hospital system: {hospital_system}")
+        
+        print(f"Created directories for {len(hospital_systems)} hospital systems")
+        return True
+    except Exception as e:
+        print(f"Error creating hospital system directories: {str(e)}")
+        return False
+
+# Call this function during server startup
+create_hospital_system_directories()
+
+@app.get("/api/user/{user_id}/templates")
+def get_user_templates(user_id: int):
+    try:
+        # Create a new database connection for this request
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get the user's hospital system
+        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        hospital_system = user['hospital_system']
+        
+        # Get all templates for this hospital system
+        cursor.execute(
+            """
+            SELECT original_filename, html_filename, created_at, updated_at
+            FROM universal_pdfs
+            WHERE hospital_system = ? AND html_filename IS NOT NULL
+            ORDER BY updated_at DESC
+            """,
+            (hospital_system,)
+        )
+        
+        templates = cursor.fetchall()
+        conn.close()
+        
+        # Convert to a list of dictionaries
+        template_list = [
+            {
+                "originalFilename": template['original_filename'],
+                "htmlFilename": template['html_filename'],
+                "createdAt": template['created_at'],
+                "updatedAt": template['updated_at']
+            }
+            for template in templates
+        ]
+        
+        return {
+            "hospitalSystem": hospital_system,
+            "templates": template_list
+        }
+    except Exception as e:
+        print(f"Error fetching templates: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch templates: {str(e)}")
+
+@app.get("/api/user/{user_id}/filled-forms")
+def get_user_filled_forms(user_id: int):
+    try:
+        # Create a new database connection for this request
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get filled forms for this user with patient information
+        cursor.execute(
+            """
+            SELECT f.id, f.filled_filename, p.original_filename, f.created_at, 
+                   pat.id as patient_id, pat.name as patient_name
+            FROM filled_forms f
+            JOIN pdfs p ON f.pdf_id = p.id
+            JOIN patients pat ON f.patient_id = pat.id
+            WHERE f.user_id = ?
+            ORDER BY f.created_at DESC
+            """,
+            (user_id,)
+        )
+        
+        filled_forms = []
+        for row in cursor.fetchall():
+            form_data = {
+                "id": row['id'],
+                "filename": row['filled_filename'],
+                "originalFilename": row['original_filename'],
+                "uploadDate": row['created_at'],
+                "url": f"/uploads/{row['filled_filename']}",
+                "patientId": row['patient_id'],
+                "patientName": row['patient_name']
+            }
+            
+            filled_forms.append(form_data)
+        
+        conn.close()
+        return {"filledForms": filled_forms}
+    except Exception as e:
+        print(f"Error fetching filled forms: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch filled forms: {str(e)}")
+
+@app.delete("/api/templates/{template_filename}")
+def delete_template(template_filename: str, user_id: int):
+    try:
+        # Create a new database connection for this request
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get the user's hospital system
+        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        hospital_system = user['hospital_system']
+        
+        # Get the template to verify it belongs to the user's hospital system
+        cursor.execute(
+            "SELECT html_filename, hospital_system FROM universal_pdfs WHERE original_filename = ?",
+            (template_filename,)
+        )
+        
+        template = cursor.fetchone()
+        
+        if not template:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Template not found")
+        
+        # Verify the template belongs to the user's hospital system
+        if template['hospital_system'] != hospital_system:
+            conn.close()
+            raise HTTPException(status_code=403, detail="You don't have permission to delete this template")
+        
+        # Delete the HTML file if it exists
+        if template['html_filename']:
+            # Sanitize the hospital system name for the directory path
+            safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+            
+            # Check if the file is in the hospital system subdirectory
+            hospital_html_path = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system, template['html_filename'])
+            
+            # Also check the root HTML directory as a fallback
+            root_html_path = os.path.join(HTML_OUTPUT_DIR, template['html_filename'])
+            
+            # Try to delete from the hospital system directory first
+            if os.path.exists(hospital_html_path):
+                os.remove(hospital_html_path)
+                print(f"Deleted HTML file from hospital system directory: {hospital_html_path}")
+            # If not found there, try the root directory
+            elif os.path.exists(root_html_path):
+                os.remove(root_html_path)
+                print(f"Deleted HTML file from root directory: {root_html_path}")
+            else:
+                print(f"HTML file not found at either location: {hospital_html_path} or {root_html_path}")
+        
+        # Delete the template from the database
+        cursor.execute(
+            "DELETE FROM universal_pdfs WHERE original_filename = ?",
+            (template_filename,)
+        )
+        
+        conn.commit()
+        conn.close()
+        
+        return {"success": True, "message": f"Template '{template_filename}' deleted successfully"}
+    except Exception as e:
+        print(f"Error deleting template: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete template: {str(e)}") 

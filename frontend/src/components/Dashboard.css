@@ -824,8 +824,9 @@
 }
 
 .upload-subtext {
-  font-size: 0.9rem; /* Slightly reduced */
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  color: #4FFFB0;
+  margin-top: 10px;
 }
 
 /* Updated Patient Manager Card Styles */
@@ -1591,4 +1592,222 @@ textarea.patient-input {
 
 .use-template-button:hover {
   background: #3ee69f;
+}
+
+/* Templates Card */
+.view-templates-card {
+  background: linear-gradient(135deg, rgba(79, 176, 255, 0.2) 0%, rgba(79, 176, 255, 0.1) 100%);
+  border: 2px dashed rgba(79, 176, 255, 0.5);
+  border-radius: 2rem;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100px;
+}
+
+.view-templates-card:hover {
+  background: linear-gradient(135deg, rgba(79, 176, 255, 0.3) 0%, rgba(79, 176, 255, 0.2) 100%);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.view-templates-icon {
+  font-size: 24px;
+  color: rgba(79, 176, 255, 0.8);
+  margin-bottom: 10px;
+}
+
+.view-templates-text {
+  color: white;
+  font-weight: 600;
+}
+
+/* Template Card */
+.template-card {
+  background: rgba(30, 30, 60, 0.5);
+  border: 1px solid rgba(79, 176, 255, 0.3);
+  border-radius: 1rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.template-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.template-name {
+  color: white;
+  font-weight: 600;
+  margin-bottom: 5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.template-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+}
+
+/* Templates Modal */
+.templates-modal {
+  background: #1e1e3c;
+  border-radius: 1rem;
+  width: 80%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  padding: 0;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+
+.templates-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  background: #1e1e3c;
+  z-index: 1;
+}
+
+.templates-modal-header h2 {
+  color: white;
+  margin: 0;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.templates-modal-content {
+  padding: 1.5rem;
+}
+
+.no-templates-message {
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.templates-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.template-item {
+  background: rgba(40, 40, 70, 0.5);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.template-item-info {
+  margin-bottom: 1rem;
+}
+
+.template-item-name {
+  color: white;
+  font-weight: 600;
+  margin-bottom: 5px;
+  word-break: break-word;
+}
+
+.template-item-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.use-template-button {
+  background: #4FFFB0;
+  color: #3B2B6D;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-end;
+}
+
+.use-template-button:hover {
+  background: #3ee69f;
+}
+
+/* Add this to your existing CSS */
+.templates-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.template-item {
+  background: rgba(30, 30, 60, 0.5);
+  border: 1px solid rgba(79, 255, 176, 0.3);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.template-item-header {
+  margin-bottom: 1rem;
+}
+
+.template-item-name {
+  color: white;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.template-item-date {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8rem;
+}
+
+.template-item-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem; /* Add gap between buttons */
+}
+
+.use-template {
+  background-color: #4FFFB0;
+  color: #3B2B6D;
+}
+
+.delete-button {
+  background: rgba(255, 79, 79, 0.2) !important;
+  color: #ff4f4f !important;
+  border: 1px solid rgba(255, 79, 79, 0.4) !important;
+}
+
+.delete-button:hover {
+  background: rgba(255, 79, 79, 0.3) !important;
 } 

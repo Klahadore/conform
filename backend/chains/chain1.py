@@ -190,7 +190,7 @@ def convert_to_typeform(html_content):
     typeform_html = extract_html(response_text)
     return typeform_html
 
-def chain1(pdf_path, coordinates):
+def chain1(pdf_path, coordinates, hospital_system=None):
     """Process a PDF and generate HTML"""
     try:
         print(f"chain1 processing started for {pdf_path}")
@@ -204,7 +204,18 @@ def chain1(pdf_path, coordinates):
         
         # Define the path where the HTML file will be saved
         html_output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "html_outputs")
-        html_path = os.path.join(html_output_dir, html_filename)
+        
+        # If hospital_system is provided, use the pre-created directory
+        if hospital_system:
+            # Sanitize the hospital system name to be safe for filesystem
+            safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+            hospital_system_dir = os.path.join(html_output_dir, safe_hospital_system)
+            # Directory should already exist, but create it just in case
+            os.makedirs(hospital_system_dir, exist_ok=True)
+            html_path = os.path.join(hospital_system_dir, html_filename)
+        else:
+            # For backward compatibility, still support the root directory
+            html_path = os.path.join(html_output_dir, html_filename)
         
         # Process the PDF and generate HTML
         pdf_form = pathlib.Path(pdf_path)
@@ -231,24 +242,27 @@ def chain1(pdf_path, coordinates):
         
         existing_record = cursor.fetchone()
         
+        # Store the relative path to the HTML file (from the html_outputs directory)
+        relative_html_path = os.path.join(safe_hospital_system, html_filename) if hospital_system else html_filename
+        
         if existing_record:
             # Update the existing record
             cursor.execute(
                 """
                 UPDATE universal_pdfs 
-                SET html_content = ?, html_filename = ?, updated_at = datetime('now')
+                SET html_content = ?, html_filename = ?, hospital_system = ?, updated_at = datetime('now')
                 WHERE original_filename = ?
                 """,
-                (html_content, html_filename, original_filename)
+                (html_content, relative_html_path, hospital_system, original_filename)
             )
         else:
             # Insert a new record
             cursor.execute(
                 """
-                INSERT INTO universal_pdfs (original_filename, html_content, html_filename, created_at, updated_at)
-                VALUES (?, ?, ?, datetime('now'), datetime('now'))
+                INSERT INTO universal_pdfs (original_filename, html_content, html_filename, hospital_system, created_at, updated_at)
+                VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
                 """,
-                (original_filename, html_content, html_filename)
+                (original_filename, html_content, relative_html_path, hospital_system)
             )
         
         conn.commit()
