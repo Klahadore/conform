@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consent for Sterilization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .form-step {
+            display: none;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            height: 100%;
+        }
+        .form-step.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .progress-bar {
+            height: 6px;
+            background-color: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4f46e5;
+            transition: width 0.5s ease;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .form-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .step-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .btn {
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        input, textarea, select {
+            transition: all 0.3s ease;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+        .notice-banner {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { background-color: rgba(254, 202, 202, 0.7); }
+            50% { background-color: rgba(254, 202, 202, 1); }
+            100% { background-color: rgba(254, 202, 202, 0.7); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="form-container max-w-3xl mx-auto bg-white shadow-xl rounded-lg overflow-hidden">
+        <!-- Header with progress bar -->
+        <div class="sticky top-0 bg-white border-b border-gray-200 p-4 z-10">
+            <div class="text-right text-sm text-gray-600 mb-2">
+                Form Approved: OMB No. 0937-0166<br>
+                Expiration date: 7/31/2025
+            </div>
+            <h1 class="text-2xl font-bold text-center mb-4">CONSENT FOR STERILIZATION</h1>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <form id="sterilizationForm" class="h-full">
+            <div class="step-content">
+                <!-- Step 1: Introduction -->
+                <div class="form-step active" id="step1">
+                    <div class="bg-blue-100 p-3 mb-4 rounded">
+                        <p class="font-semibold">This form has four main sections:</p>
+                        <ol class="list-decimal ml-6">
+                            <li><strong>Patient section</strong> - To be completed by the person considering sterilization</li>
+                            <li><strong>Interpreter section</strong> - Only needed if an interpreter was used</li>
+                            <li><strong>Consent obtainer section</strong> - To be completed by the healthcare provider discussing the procedure</li>
+                            <li><strong>Physician section</strong> - To be completed by the doctor performing the procedure</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="border-2 border-red-600 p-3 mb-6 font-bold text-center bg-red-50 notice-banner">
+                        NOTICE: YOUR DECISION AT ANY TIME NOT TO BE STERILIZED WILL NOT RESULT IN THE WITHDRAWAL OR WITHHOLDING 
+                        OF ANY BENEFITS PROVIDED BY PROGRAMS OR PROJECTS RECEIVING FEDERAL FUNDS.
+                    </div>
+                    
+                    <p class="mb-4">This form will guide you through the process of providing consent for sterilization. You'll be asked to provide information step by step.</p>
+                    <p class="mb-4">You can navigate through the form using the buttons at the bottom of each screen.</p>
+                </div>
+                
+                <!-- Step 2: Doctor/Clinic Information -->
+                <div class="form-step" id="step2">
+                    <h2 class="text-xl font-bold mb-6">Healthcare Provider Information</h2>
+                    <p class="mb-6">I have asked for and received information about sterilization from:</p>
+                    <div class="mb-4">
+                        <label for="doctorClinic" class="block text-sm font-medium text-gray-700 mb-2">Doctor or Clinic Name</label>
+                        <input type="text" id="doctorClinic" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter doctor or clinic name">
+                    </div>
+                </div>
+                
+                <!-- Step 3: Operation Type -->
+                <div class="form-step" id="step3">
+                    <h2 class="text-xl font-bold mb-6">Sterilization Procedure</h2>
+                    <p class="mb-6">I understand that I will be sterilized by an operation known as:</p>
+                    <div class="mb-4">
+                        <label for="operationType1" class="block text-sm font-medium text-gray-700 mb-2">Type of Operation</label>
+                        <input type="text" id="operationType1" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., tubal ligation, vasectomy">
+                        <p class="mt-2 text-sm text-gray-500">This information will be automatically copied to other sections of the form.</p>
+                    </div>
+                </div>
+                
+                <!-- Step 4: Birth Date -->
+                <div class="form-step" id="step4">
+                    <h2 class="text-xl font-bold mb-6">Your Birth Date</h2>
+                    <p class="mb-6">I am at least 21 years of age and was born on:</p>
+                    <div class="mb-4">
+                        <label for="birthDate" class="block text-sm font-medium text-gray-700 mb-2">Birth Date</label>
+                        <input type="date" id="birthDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                        <p class="mt-2 text-sm text-gray-500">You must be at least 21 years old to provide consent for sterilization.</p>
+                    </div>
+                </div>
+                
+                <!-- Step 5: Patient Consent Information -->
+                <div class="form-step" id="step5">
+                    <h2 class="text-xl font-bold mb-6">Your Consent</h2>
+                    <p class="mb-6 font-bold text-lg bg-yellow-100 p-2">I UNDERSTAND THAT STERILIZATION IS PERMANENT AND CANNOT BE REVERSED. I HAVE DECIDED THAT I DO NOT WANT TO BECOME PREGNANT, BEAR CHILDREN OR FATHER CHILDREN.</p>
+                    <div class="mb-4">
+                        <label for="patientName" class="block text-sm font-medium text-gray-700 mb-2">Your Full Name</label>
+                        <input type="text" id="patientName" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your full name" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="doctorName" class="block text-sm font-medium text-gray-700 mb-2">Doctor's Name</label>
+                        <input type="text" id="doctorName" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Doctor who will perform the procedure">
+                    </div>
+                    <div class="mb-4">
+                        <label for="operationType2" class="block text-sm font-medium text-gray-700 mb-2">Type of Operation</label>
+                        <input type="text" id="operationType2" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type of Operation" readonly>
+                    </div>
+                </div>
+                
+                <!-- Step 6: Patient Signature -->
+                <div class="form-step" id="step6">
+                    <h2 class="text-xl font-bold mb-6">Your Signature</h2>
+                    <p class="mb-4">By providing your signature, you confirm that:</p>
+                    <ul class="list-disc ml-6 mb-4">
+                        <li>You consent of your own free will to be sterilized</li>
+                        <li>You understand this is a permanent procedure</li>
+                        <li>You have received all information about the risks, benefits, and alternatives</li>
+                    </ul>
+                    <div class="mb-4">
+                        <label for="patientSignature" class="block text-sm font-medium text-gray-700 mb-2">Your Signature</label>
+                        <input type="text" id="patientSignature" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type your full name as signature" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="consentDate" class="block text-sm font-medium text-gray-700 mb-2">Today's Date</label>
+                        <input type="date" id="consentDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required readonly>
+                    </div>
+                </div>
+                
+                <!-- Step 7: Demographic Information -->
+                <div class="form-step" id="step7">
+                    <h2 class="text-xl font-bold mb-6">Demographic Information (Optional)</h2>
+                    <p class="mb-4">This information is optional and does not affect your consent or care.</p>
+                    <div class="mb-6">
+                        <p class="font-bold mb-2">Ethnicity:</p>
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="ethnicityHispanic" class="mr-2 h-5 w-5">
+                            <label for="ethnicityHispanic">Hispanic or Latino</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="ethnicityNotHispanic" class="mr-2 h-5 w-5">
+                            <label for="ethnicityNotHispanic">Not Hispanic or Latino</label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="font-bold mb-2">Race (mark one or more):</p>
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="raceNativeAmerican" class="mr-2 h-5 w-5">
+                            <label for="raceNativeAmerican">American Indian or Alaska Native</label>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="raceAsian" class="mr-2 h-5 w-5">
+                            <label for="raceAsian">Asian</label>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="raceBlack" class="mr-2 h-5 w-5">
+                            <label for="raceBlack">Black or African American</label>
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <input type="checkbox" id="racePacificIslander" class="mr-2 h-5 w-5">
+                            <label for="racePacificIslander">Native Hawaiian or Other Pacific Islander</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="raceWhite" class="mr-2 h-5 w-5">
+                            <label for="raceWhite">White</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 8: Interpreter Introduction -->
+                <div class="form-step" id="step8">
+                    <h2 class="text-xl font-bold mb-6">Interpreter Services</h2>
+                    <div class="bg-blue-100 p-3 mb-4 rounded">
+                        <p>This section is only needed if an interpreter was used to help explain the procedure.</p>
+                    </div>
+                    <p class="mb-4">Was an interpreter used to help explain this procedure to you?</p>
+                    <div class="flex space-x-4">
+                        <button type="button" id="interpreterYes" class="py-2 px-4 bg-indigo-600 text-white rounded hover:bg-indigo-700 focus:outline-none">Yes, an interpreter was used</button>
+                        <button type="button" id="interpreterNo" class="py-2 px-4 bg-gray-600 text-white rounded hover:bg-gray-700 focus:outline-none">No interpreter was needed</button>
+                    </div>
+                </div>
+                
+                <!-- Step 9: Interpreter Details -->
+                <div class="form-step" id="step9">
+                    <h2 class="text-xl font-bold mb-6">Interpreter Information</h2>
+                    <div class="mb-4">
+                        <label for="interpreterLanguage" class="block text-sm font-medium text-gray-700 mb-2">Language Used</label>
+                        <input type="text" id="interpreterLanguage" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g., Spanish, Mandarin">
+                    </div>
+                    <div class="mb-4">
+                        <label for="interpreterSignature" class="block text-sm font-medium text-gray-700 mb-2">Interpreter's Signature</label>
+                        <input type="text" id="interpreterSignature" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Interpreter's signature">
+                    </div>
+                    <div class="mb-4">
+                        <label for="interpreterDate" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="interpreterDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
+                
+                <!-- Step 10: Healthcare Provider Introduction -->
+                <div class="form-step" id="step10">
+                    <h2 class="text-xl font-bold text-center border-b-2 border-blue-500 py-1 mb-6">HEALTHCARE PROVIDER SECTION</h2>
+                    <div class="bg-blue-100 p-3 mb-4 rounded">
+                        <p>This section is to be completed by the healthcare provider who explained the procedure and obtained the patient's consent.</p>
+                    </div>
+                    <p class="mb-4">The following sections should be completed by the healthcare provider who explained the sterilization procedure to the patient and obtained their consent.</p>
+                </div>
+                
+                <!-- Step 11: Provider Consent Information -->
+                <div class="form-step" id="step11">
+                    <h2 class="text-xl font-bold mb-6">Patient and Procedure Details</h2>
+                    <div class="mb-4">
+                        <label for="patientNameConsent" class="block text-sm font-medium text-gray-700 mb-2">Patient's Name</label>
+                        <input type="text" id="patientNameConsent" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter patient's name" readonly>
+                    </div>
+                    <div class="mb-4">
+                        <label for="operationType3" class="block text-sm font-medium text-gray-700 mb-2">Type of Operation</label>
+                        <input type="text" id="operationType3" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type of Operation" readonly>
+                    </div>
+                    <p class="mb-4 mt-6">I confirm that I have explained the nature of the sterilization operation, that it is intended to be a final and irreversible procedure, and the discomforts, risks, and benefits associated with it.</p>
+                </div>
+                
+                <!-- Step 12: Provider Signature -->
+                <div class="form-step" id="step12">
+                    <h2 class="text-xl font-bold mb-6">Healthcare Provider Signature</h2>
+                    <div class="mb-4">
+                        <label for="consentObtainerSignature" class="block text-sm font-medium text-gray-700 mb-2">Signature of Person Obtaining Consent</label>
+                        <input type="text" id="consentObtainerSignature" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type your full name as signature" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="consentObtainedDate" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="consentObtainedDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                </div>
+                
+                <!-- Step 13: Facility Information -->
+                <div class="form-step" id="step13">
+                    <h2 class="text-xl font-bold mb-6">Facility Information</h2>
+                    <div class="mb-4">
+                        <label for="facilityName" class="block text-sm font-medium text-gray-700 mb-2">Facility Name</label>
+                        <input type="text" id="facilityName" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter facility name" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="facilityAddress" class="block text-sm font-medium text-gray-700 mb-2">Facility Address</label>
+                        <input type="text" id="facilityAddress" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter facility address" required>
+                    </div>
+                </div>
+                
+                <!-- Step 14: Physician Statement Introduction -->
+                <div class="form-step" id="step14">
+                    <h2 class="text-xl font-bold text-center border-b-2 border-purple-500 py-1 mb-6">PHYSICIAN'S STATEMENT</h2>
+                    <div class="bg-blue-100 p-3 mb-4 rounded">
+                        <p>This section must be completed by the physician who performed the sterilization procedure, after the procedure is complete.</p>
+                    </div>
+                    <p class="mb-4">The final sections of this form should be completed by the physician who performed the sterilization procedure.</p>
+                </div>
+                
+                <!-- Step 15: Physician Details -->
+                <div class="form-step" id="step15">
+                    <h2 class="text-xl font-bold mb-6">Patient and Procedure Details</h2>
+                    <div class="mb-4">
+                        <label for="patientNameSurgery" class="block text-sm font-medium text-gray-700 mb-2">Patient's Name</label>
+                        <input type="text" id="patientNameSurgery" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter patient's name" readonly>
+                    </div>
+                    <div class="mb-4">
+                        <label for="sterilizationDate" class="block text-sm font-medium text-gray-700 mb-2">Date of Sterilization</label>
+                        <input type="date" id="sterilizationDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="operationType4" class="block text-sm font-medium text-gray-700 mb-2">Type of Operation</label>
+                        <input type="text" id="operationType4" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type of Operation" readonly>
+                    </div>
+                </div>
+                
+                <!-- Step 16: Procedure Timing -->
+                <div class="form-step" id="step16">
+                    <h2 class="text-xl font-bold mb-6">Procedure Timing</h2>
+                    <p class="mb-4">Select one of the following regarding the timing of the procedure:</p>
+                    <div class="mb-4 p-3 border border-gray-300 bg-gray-50 rounded-lg">
+                        <div class="flex items-start mb-3">
+                            <input type="radio" id="paragraph1" name="timingParagraph" class="mt-1 mr-2">
+                            <label for="paragraph1" class="font-semibold">(1) At least 30 days have passed between the date of the individual's signature on this consent form and the date the sterilization was performed.</label>
+                        </div>
+                        
+                        <div class="flex items-start">
+                            <input type="radio" id="paragraph2" name="timingParagraph" class="mt-1 mr-2">
+                            <label for="paragraph2" class="font-semibold">(2) This sterilization was performed less than 30 days but more than 72 hours after the date of the individual's signature on this consent form because of special circumstances.</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 17: Special Circumstances -->
+                <div class="form-step" id="step17">
+                    <h2 class="text-xl font-bold mb-6">Special Circumstances</h2>
+                    <p class="mb-4">If the sterilization was performed less than 30 days after consent, please select the reason:</p>
+                    <div id="specialCircumstances" class="mb-4 p-3 border border-gray-300 bg-gray-50 rounded-lg">
+                        <div class="flex items-center mb-3">
+                            <input type="radio" id="prematureDelivery" name="specialCircumstance" class="mr-2">
+                            <label for="prematureDelivery">Premature delivery</label>
+                        </div>
+                        <div id="prematureDeliveryDetails" class="ml-6 mb-4 hidden">
+                            <label for="expectedDeliveryDate" class="block text-sm font-medium text-gray-700 mb-2">Individual's expected date of delivery:</label>
+                            <input type="date" id="expectedDeliveryDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        
+                        <div class="flex items-center mb-3">
+                            <input type="radio" id="emergencySurgery" name="specialCircumstance" class="mr-2">
+                            <label for="emergencySurgery">Emergency abdominal surgery</label>
+                        </div>
+                        <div id="emergencySurgeryDetails" class="ml-6 hidden">
+                            <label for="emergencyCircumstances" class="block text-sm font-medium text-gray-700 mb-2">Describe circumstances:</label>
+                            <textarea id="emergencyCircumstances" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Step 18: Physician Signature -->
+                <div class="form-step" id="step18">
+                    <h2 class="text-xl font-bold mb-6">Physician Signature</h2>
+                    <div class="mb-4">
+                        <label for="physicianSignature" class="block text-sm font-medium text-gray-700 mb-2">Physician's Signature</label>
+                        <input type="text" id="physicianSignature" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Type your full name as signature" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="physicianStatementDate" class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                        <input type="date" id="physicianStatementDate" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" required>
+                    </div>
+                </div>
+                
+                <!-- Step 19: Form Review and Submit -->
+                <div class="form-step" id="step19">
+                    <h2 class="text-xl font-bold mb-6">Review and Submit</h2>
+                    <p class="mb-4">You have completed all sections of the Consent for Sterilization form. Please review your information before submitting.</p>
+                    <div class="bg-green-100 p-3 mb-4 rounded">
+                        <p>By submitting this form, you confirm that all information provided is accurate and complete.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Buttons -->
+            <div class="flex justify-between items-center p-4 bg-gray-50 border-t border-gray-200">
+                <button type="button" id="prevBtn" class="btn bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg">Previous</button>
+                <div id="stepIndicator" class="text-gray-600 text-sm">Step <span id="currentStep">1</span> of <span id="totalSteps">19</span></div>
+                <button type="button" id="nextBtn" class="btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg">Next</button>
+                <button type="submit" id="submitBtn" class="btn bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg hidden">Submit</button>
+            </div>
+        </form>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('sterilizationForm');
+            const steps = document.querySelectorAll('.form-step');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            const progressBar = document.getElementById('progressBar');
+            const currentStepEl = document.getElementById('currentStep');
+            const totalStepsEl = document.getElementById('totalSteps');
+            
+            let currentStep = 1;
+            const totalSteps = steps.length;
+            totalStepsEl.textContent = totalSteps;
+            
+            // Get today's date and format it for the date input
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
+            
+            // Set today's date for the consent date
+            document.getElementById('consentDate').value = formattedDate;
+            
+            // Calculate date 21 years ago for birthdate validation
+            const minAge = new Date();
+            minAge.setFullYear(minAge.getFullYear() - 21);
+            const maxBirthDate = minAge.toISOString().substr(0, 10);
+            document.getElementById('birthDate').setAttribute('max', maxBirthDate);
+            
+            // Update progress bar
+            function updateProgress() {
+                const percent = ((currentStep - 1) / (totalSteps - 1)) * 100;
+                progressBar.style.width = percent + '%';
+                currentStepEl.textContent = currentStep;
+                
+                // Show/hide buttons based on current step
+                if (currentStep === 1) {
+                    prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    prevBtn.disabled = true;
+                } else {
+                    prevBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    prevBtn.disabled = false;
+                }
+                
+                if (currentStep === totalSteps) {
+                    nextBtn.classList.add('hidden');
+                    submitBtn.classList.remove('hidden');
+                } else {
+                    nextBtn.classList.remove('hidden');
+                    submitBtn.classList.add('hidden');
+                }
+            }
+            
+            // Navigate to previous step
+            prevBtn.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    document.getElementById(`step${currentStep}`).classList.remove('active');
+                    currentStep--;
+                    
+                    // Skip interpreter section if "No" was chosen
+                    if (currentStep === 9 && document.getElementById('interpreterNo').classList.contains('bg-indigo-600')) {
+                        currentStep = 7;
+                    }
+                    
+                    // Skip special circumstances if paragraph1 was selected
+                    if (currentStep === 17 && document.getElementById('paragraph1').checked) {
+                        currentStep = 15;
+                    }
+                    
+                    document.getElementById(`step${currentStep}`).classList.add('active');
+                    updateProgress();
+                }
+            });
+            
+            // Navigate to next step
+            nextBtn.addEventListener('click', function() {
+                const currentStepEl = document.getElementById(`step${currentStep}`);
+                
+                // Simple validation for required fields in current step
+                let canProceed = true;
+                const requiredFields = currentStepEl.querySelectorAll('[required]');
+                requiredFields.forEach(field => {
+                    if (!field.value.trim()) {
+                        field.classList.add('border-red-500');
+                        canProceed = false;
+                    } else {
+                        field.classList.remove('border-red-500');
+                    }
+                });
+                
+                if (!canProceed) {
+                    alert('Please fill in all required fields before proceeding.');
+                    return;
+                }
+                
+                if (currentStep < totalSteps) {
+                    currentStepEl.classList.remove('active');
+                    currentStep++;
+                    
+                    // Skip interpreter section if "No" was chosen
+                    if (currentStep === 9 && document.getElementById('interpreterNo').classList.contains('bg-indigo-600')) {
+                        currentStep = 10;
+                    }
+                    
+                    // Skip special circumstances if paragraph1 was selected
+                    if (currentStep === 17 && document.getElementById('paragraph1').checked) {
+                        currentStep = 18;
+                    }
+                    
+                    document.getElementById(`step${currentStep}`).classList.add('active');
+                    updateProgress();
+                    
+                    // Scroll to top when advancing
+                    window.scrollTo(0, 0);
+                }
+            });
+            
+            // Handle interpreter selection
+            document.getElementById('interpreterYes').addEventListener('click', function() {
+                this.classList.add('bg-indigo-600');
+                this.classList.remove('bg-gray-600');
+                document.getElementById('interpreterNo').classList.add('bg-gray-600');
+                document.getElementById('interpreterNo').classList.remove('bg-indigo-600');
+            });
+            
+            document.getElementById('interpreterNo').addEventListener('click', function() {
+                this.classList.add('bg-indigo-600');
+                this.classList.remove('bg-gray-600');
+                document.getElementById('interpreterYes').classList.add('bg-gray-600');
+                document.getElementById('interpreterYes').classList.remove('bg-indigo-600');
+            });
+            
+            // Copy operation type across form sections
+            document.getElementById('operationType1').addEventListener('input', function() {
+                document.getElementById('operationType2').value = this.value;
+                document.getElementById('operationType3').value = this.value;
+                document.getElementById('operationType4').value = this.value;
+            });
+            
+            // Copy doctor/clinic name
+            document.getElementById('doctorClinic').addEventListener('input', function() {
+                document.getElementById('doctorName').value = this.value;
+            });
+            
+            // Copy patient name across form sections
+            document.getElementById('patientName').addEventListener('input', function() {
+                document.getElementById('patientNameConsent').value = this.value;
+                document.getElementById('patientNameSurgery').value = this.value;
+            });
+            
+            // Show/hide special circumstances details
+            document.getElementById('paragraph2').addEventListener('change', function() {
+                document.getElementById('specialCircumstances').classList.remove('hidden');
+            });
+            
+            document.getElementById('paragraph1').addEventListener('change', function() {
+                document.getElementById('specialCircumstances').classList.add('hidden');
+            });
+            
+            // Show appropriate details for special circumstances
+            document.getElementById('prematureDelivery').addEventListener('change', function() {
+                document.getElementById('prematureDeliveryDetails').classList.remove('hidden');
+                document.getElementById('emergencySurgeryDetails').classList.add('hidden');
+            });
+            
+            document.getElementById('emergencySurgery').addEventListener('change', function() {
+                document.getElementById('emergencySurgeryDetails').classList.remove('hidden');
+                document.getElementById('prematureDeliveryDetails').classList.add('hidden');
+            });
+            
+            // Form submission logic
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Check if birthdate indicates at least 21 years old
+                const birthDate = new Date(document.getElementById('birthDate').value);
+                const today = new Date();
+                const age = today.getFullYear() - birthDate.getFullYear();
+                
+                if (age < 21) {
+                    alert('You must be at least 21 years old to consent to sterilization.');
+                    return false;
+                }
+                
+                // Check if procedure date is at least 30 days after consent date
+                if (document.getElementById('paragraph1').checked) {
+                    const consentDate = new Date(document.getElementById('consentDate').value);
+                    const procedureDate = new Date(document.getElementById('sterilizationDate').value);
+                    
+                    // Calculate days between dates
+                    const timeDiff = procedureDate - consentDate;
+                    const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                    
+                    if (daysDiff < 30) {
+                        alert('The procedure must be performed at least 30 days after consent is given, unless special circumstances apply.');
+                        return false;
+                    }
+                }
+                
+                alert('Form submitted successfully!');
+                // In a real implementation, you would collect all form data and submit it to the server here
+                console.log('Form submitted');
+            });
+            
+            // Initialize
+            updateProgress();
+        });
+    </script>
+</body>
+</html>

@@ -47,6 +47,23 @@ const Dashboard = ({
   const [patientConditions, setPatientConditions] = useState('');
   const [patientMedications, setPatientMedications] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingPdfId, setProcessingPdfId] = useState(null);
+  const [processingFilename, setProcessingFilename] = useState(null);
+  const [htmlReady, setHtmlReady] = useState(false);
+  const [htmlUrl, setHtmlUrl] = useState(null);
+  const checkIntervalRef = useRef(null);
+  
+  // Add a cleanup effect to clear the interval when component unmounts
+  useEffect(() => {
+    return () => {
+      if (checkIntervalRef.current) {
+        console.log("Cleaning up check interval on unmount");
+        clearInterval(checkIntervalRef.current);
+        checkIntervalRef.current = null;
+      }
+    };
+  }, []);
   
   // Fetch user's PDFs on component mount
   useEffect(() => {
@@ -155,81 +172,65 @@ const Dashboard = ({
       
       console.log(`Upload response status: ${response.status}`);
       
-      let responseText;
-      try {
-        responseText = await response.text();
-        console.log('Response text:', responseText);
-      } catch (textError) {
-        console.error('Error reading response text:', textError);
-      }
-      
       if (!response.ok) {
-        throw new Error(responseText || `Server error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(errorText || `Server error: ${response.status}`);
       }
       
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error('Error parsing JSON response:', jsonError);
-        throw new Error('Invalid response from server');
-      }
+      const data = await response.json();
+      console.log('Upload response data:', data);
       
-      console.log('Upload successful:', data);
-      
-      console.log("Upload response data:", data);
-      console.log("PDF URL from server:", data.pdf.url);
-      
-      // Save the uploaded PDF
       setLastUploadedPdf(data.pdf);
       
-      // Create a form object from the uploaded PDF with the correct URL format
-      const newForm = {
-        id: data.pdf.id,
-        title: data.pdf.originalFilename.replace('.pdf', ''),
-        createdAt: data.pdf.uploadDate,
-        // Make sure the URL is properly formatted
-        pdfUrl: data.pdf.url.startsWith('/') ? data.pdf.url : `/uploads/${data.pdf.filename}`,
-        filename: data.pdf.filename,
-        originalFilename: data.pdf.originalFilename,
-        patientId: data.pdf.patientId,
-        patientName: data.pdf.patientName,
-        // Add a flag to indicate this is a newly uploaded form
-        justUploaded: true
-      };
-      
-      // Update the forms list
-      if (setForms) {
-        setForms([newForm, ...forms]);
+      // If the PDF already has HTML content and filename
+      if (data.pdf.hasHtmlContent && data.pdf.hasHtmlFilename) {
+        console.log("PDF already has HTML content");
+        setUploadSuccess(`Template for "${data.pdf.originalFilename}" already exists.`);
+      }
+      // If processing was started
+      else if (data.pdf.processingStarted) {
+        console.log("PDF processing started");
+        setUploadSuccess(`Processing "${data.pdf.originalFilename}" to create template...`);
+        
+        // Instead of polling, just wait a fixed amount of time then check once
+        setTimeout(async () => {
+          try {
+            console.log(`Checking HTML readiness for: ${data.pdf.originalFilename}`);
+            const checkResponse = await fetch(`/api/check-html/${encodeURIComponent(data.pdf.originalFilename)}`);
+            
+            if (checkResponse.ok) {
+              const checkData = await checkResponse.json();
+              console.log("HTML readiness check response:", checkData);
+              
+              if (checkData.ready) {
+                setUploadSuccess(`Template Created! "${data.pdf.originalFilename}" is ready to use.`);
+              } else {
+                setUploadSuccess(`Template processing in progress. Please check back later.`);
+              }
+            }
+          } catch (error) {
+            console.error("Error checking HTML readiness:", error);
+            setUploadSuccess(`Template processing started. Please check back later.`);
+          }
+        }, 10000); // Wait 10 seconds before checking
+      } else {
+        setUploadSuccess(`PDF uploaded successfully: ${data.pdf.originalFilename}`);
       }
       
-      // Show success message with patient name if assigned
-      setUploadSuccess(`PDF uploaded successfully${data.pdf.patientName ? ` and assigned to ${data.pdf.patientName}` : ''}`);
+      // Refresh the user's PDFs list
+      fetchUserPdfs();
       
-      // Set the form to be edited directly with the data we already have
-      setFormToEdit(newForm);
-      
-      // Show the Form Editor
-      setShowFormEditor(true);
-      
-      // Close any open modals
-      setShowAllForms(false);
-      setExpandedPatient(null);
-      
-      // Scroll to top for better user experience
-      scrollToTop();
-      
-      console.log("Form object being passed to FormEditor:", newForm);
-      
-    } catch (error) {
-      console.error('Error uploading PDF:', error);
-      setUploadError(`Upload failed: ${error.message}`);
-      setTimeout(() => setUploadError(''), 5000);
-    } finally {
-      setIsUploading(false);
+      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      
+      setIsUploading(false);
+      setShowPatientAssignmentPopup(false);
+    } catch (error) {
+      console.error('Error uploading PDF:', error);
+      setUploadError(`Error uploading PDF: ${error.message}`);
+      setIsUploading(false);
     }
   };
   
@@ -331,54 +332,50 @@ const Dashboard = ({
     setShowAllForms(false);
   };
 
-  // ... existing code ...
+  const handleDeletePdf = (pdfId) => {
+    setPdfToDelete(pdfId);
+    setShowDeleteConfirm(true);
+  };
 
-const handleDeletePdf = (pdfId) => {
-  setPdfToDelete(pdfId);
-  setShowDeleteConfirm(true);
-};
+  const confirmDelete = async () => {
+    if (!pdfToDelete) return;
+    
+    try {
+      const response = await fetch(`/api/pdfs/${pdfToDelete}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete form');
+      }
+      
+      // Remove the PDF from the userPdfs state
+      setUserPdfs(userPdfs.filter(pdf => pdf.id !== pdfToDelete));
+      
+      // If this was the last uploaded PDF, clear it
+      if (lastUploadedPdf && lastUploadedPdf.id === pdfToDelete) {
+        setLastUploadedPdf(null);
+      }
+      
+      // Show success message
+      setUploadSuccess('Form deleted successfully');
+      setTimeout(() => setUploadSuccess(''), 3000);
+      
+    } catch (error) {
+      console.error('Error deleting PDF:', error);
+      setUploadError('Failed to delete form');
+      setTimeout(() => setUploadError(''), 5000);
+    } finally {
+      // Close the confirmation modal
+      setShowDeleteConfirm(false);
+      setPdfToDelete(null);
+    }
+  };
 
-const confirmDelete = async () => {
-  if (!pdfToDelete) return;
-  
-  try {
-    const response = await fetch(`/api/pdfs/${pdfToDelete}`, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete form');
-    }
-    
-    // Remove the PDF from the userPdfs state
-    setUserPdfs(userPdfs.filter(pdf => pdf.id !== pdfToDelete));
-    
-    // If this was the last uploaded PDF, clear it
-    if (lastUploadedPdf && lastUploadedPdf.id === pdfToDelete) {
-      setLastUploadedPdf(null);
-    }
-    
-    // Show success message
-    setUploadSuccess('Form deleted successfully');
-    setTimeout(() => setUploadSuccess(''), 3000);
-    
-  } catch (error) {
-    console.error('Error deleting PDF:', error);
-    setUploadError('Failed to delete form');
-    setTimeout(() => setUploadError(''), 5000);
-  } finally {
-    // Close the confirmation modal
+  const cancelDelete = () => {
     setShowDeleteConfirm(false);
     setPdfToDelete(null);
-  }
-};
-
-const cancelDelete = () => {
-  setShowDeleteConfirm(false);
-  setPdfToDelete(null);
-};
-
-// ... rest of your component ...
+  };
 
   // Add a useEffect to handle the automatic clearing of success messages
   useEffect(() => {
@@ -532,40 +529,38 @@ const cancelDelete = () => {
   };
   
   // Function to confirm patient deletion
-  // ... existing code ...
-const confirmDeletePatient = async () => {
-  try {
-    // Call the API to delete the patient
-    const response = await fetch(`/api/patients/${patientToDelete}`, {
-      method: 'DELETE'
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to delete patient');
+  const confirmDeletePatient = async () => {
+    try {
+      // Call the API to delete the patient
+      const response = await fetch(`/api/patients/${patientToDelete}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete patient');
+      }
+      
+      // Remove the patient from the state
+      setPatients(patients.filter(patient => patient.id !== patientToDelete));
+      
+      // Close the confirmation modal
+      setShowDeletePatientConfirm(false);
+      
+      // Close the patient info modal if it's open
+      setExpandedPatient(null);
+      
+      // Show success message
+      setUploadSuccess('Patient deleted successfully');
+      setTimeout(() => setUploadSuccess(''), 3000);
+      
+      // Refresh the PDFs list to update UI
+      fetchUserPdfs();
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      setUploadError('Failed to delete patient');
+      setTimeout(() => setUploadError(''), 3000);
     }
-    
-    // Remove the patient from the state
-    setPatients(patients.filter(patient => patient.id !== patientToDelete));
-    
-    // Close the confirmation modal
-    setShowDeletePatientConfirm(false);
-    
-    // Close the patient info modal if it's open
-    setExpandedPatient(null);
-    
-    // Show success message
-    setUploadSuccess('Patient deleted successfully');
-    setTimeout(() => setUploadSuccess(''), 3000);
-    
-    // Refresh the PDFs list to update UI
-    fetchUserPdfs();
-  } catch (error) {
-    console.error('Error deleting patient:', error);
-    setUploadError('Failed to delete patient');
-    setTimeout(() => setUploadError(''), 3000);
-  }
-};
-// ... existing code ...
+  };
 
   if (showFormEditor) {
     // Find the form to edit
@@ -653,8 +648,8 @@ const confirmDeletePatient = async () => {
         )}
         
         {uploadSuccess && (
-          <div className="upload-success-message">
-            {uploadSuccess}
+          <div className="upload-success">
+            <p>{uploadSuccess}</p>
           </div>
         )}
 
@@ -688,7 +683,7 @@ const confirmDeletePatient = async () => {
             {isUploading && (
               <div className="upload-status">
                 <div className="upload-spinner"></div>
-                <span>Uploading...</span>
+                <span>Creating template...</span>
               </div>
             )}
             

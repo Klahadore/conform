@@ -5,6 +5,7 @@ import anthropic
 import pathlib
 import re
 import base64
+import sqlite3
 
 load_dotenv()
 
@@ -189,14 +190,99 @@ def convert_to_typeform(html_content):
     typeform_html = extract_html(response_text)
     return typeform_html
 
-def chain1(pdf_form: pathlib.Path, keys_and_coordinates: str):
-    html_form_initial = generate_form(pdf_form, keys_and_coordinates)
-    validated_form = validate_form(pdf_form, html_form_initial)
-    typeform_style = convert_to_typeform(validated_form)
-    return typeform_style
+def chain1(pdf_path, coordinates):
+    """Process a PDF and generate HTML"""
+    try:
+        print(f"chain1 processing started for {pdf_path}")
+        
+        # Get the original filename from the path
+        original_filename = os.path.basename(pdf_path)
+        
+        # Extract the base name without extension
+        base_name = os.path.splitext(original_filename)[0]
+        html_filename = f"{base_name}.html"
+        
+        # Define the path where the HTML file will be saved
+        html_output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "html_outputs")
+        html_path = os.path.join(html_output_dir, html_filename)
+        
+        # Process the PDF and generate HTML
+        pdf_form = pathlib.Path(pdf_path)
+        html_form_initial = generate_form(pdf_form, coordinates)
+        validated_form = validate_form(pdf_form, html_form_initial)
+        html_content = convert_to_typeform(validated_form)
+        
+        # Save the HTML to a file
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        
+        print(f"HTML saved to {html_path}")
+        
+        # Update the database
+        db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "conform.db")
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Check if a record already exists for this PDF
+        cursor.execute(
+            "SELECT id FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        existing_record = cursor.fetchone()
+        
+        if existing_record:
+            # Update the existing record
+            cursor.execute(
+                """
+                UPDATE universal_pdfs 
+                SET html_content = ?, html_filename = ?, updated_at = datetime('now')
+                WHERE original_filename = ?
+                """,
+                (html_content, html_filename, original_filename)
+            )
+        else:
+            # Insert a new record
+            cursor.execute(
+                """
+                INSERT INTO universal_pdfs (original_filename, html_content, html_filename, created_at, updated_at)
+                VALUES (?, ?, ?, datetime('now'), datetime('now'))
+                """,
+                (original_filename, html_content, html_filename)
+            )
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"Database updated for {original_filename}")
+        return True
+    except Exception as e:
+        print(f"Error in chain1 processing: {str(e)}")
+        return False
 
 if __name__ == "__main__":
-    pdf_form = pathlib.Path("../test_files/sterilization_form.pdf")
+    # Connect to the database to get the original filename
+    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "conform.db")
+    
+    # Connect to the database
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Query the universal_pdfs table for the first entry (for testing)
+    cursor.execute("SELECT original_filename FROM universal_pdfs LIMIT 1")
+    result = cursor.fetchone()
+    
+    if result:
+        # Use the original filename from the database
+        original_filename = result['original_filename']
+        pdf_form = pathlib.Path(f"../uploads/{original_filename}")
+    else:
+        # Fallback to the test file if no entries in the database
+        pdf_form = pathlib.Path("../test_files/sterilization_form.pdf")
+    
+    conn.close()
+    
     mock_coordinates = """
     1: Page 1, I have asked for and received information about sterilization from Doctor or Clinic, (30, 664)
     2: Page 1, Specify Type of Operation_1, (29, 500)

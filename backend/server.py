@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Request
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Request, BackgroundTasks, Response
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -10,6 +11,8 @@ import re
 import PyPDF2
 import json
 import shutil
+from chains.chain1 import chain1
+import pathlib
 
 # Create the FastAPI app
 app = FastAPI()
@@ -23,12 +26,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create uploads directory if it doesn't exist
+# Create directories if they don't exist
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+UNIVERSAL_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "universal_uploads")
+HTML_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "html_outputs")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(UNIVERSAL_UPLOAD_DIR, exist_ok=True)
+os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
 
-# Mount the uploads directory to make files accessible
+# Mount the directories to make files accessible
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/universal_uploads", StaticFiles(directory=UNIVERSAL_UPLOAD_DIR), name="universal_uploads")
+app.mount("/html_outputs", StaticFiles(directory=HTML_OUTPUT_DIR), name="html_outputs")
 
 # Database setup
 DB_PATH = os.path.join(os.path.dirname(__file__), "conform.db")
@@ -45,34 +54,39 @@ def get_db():
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    
+    # Create users table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
-        healthcare_title TEXT NOT NULL,
-        hospital_system TEXT NOT NULL,
+        healthcare_title TEXT,
+        hospital_system TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
     
-    # Create table for uploaded PDFs
+    # Create uploaded_pdfs table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS uploaded_pdfs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         filename TEXT NOT NULL,
         original_filename TEXT NOT NULL,
-        is_fillable BOOLEAN NOT NULL,
+        is_fillable BOOLEAN,
         upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        patient_id INTEGER,
+        patient_name TEXT,
+        FOREIGN KEY (user_id) REFERENCES users(id),
+        FOREIGN KEY (patient_id) REFERENCES patients(id)
     )
     ''')
     
-    # Create patients table if it doesn't exist
+    # Create patients table
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS patients (
-        id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         user_id INTEGER NOT NULL,
         email TEXT,
@@ -82,54 +96,9 @@ def init_db():
         conditions TEXT,
         medications TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id)
+        FOREIGN KEY (user_id) REFERENCES users(id)
     )
     ''')
-    
-    # Check if the new columns exist in the patients table, add them if they don't
-    cursor.execute("PRAGMA table_info(patients)")
-    columns = cursor.fetchall()
-    column_names = [column[1] for column in columns]
-    
-    # Add new columns to patients table if they don't exist
-    if 'email' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN email TEXT')
-    
-    if 'date_of_birth' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN date_of_birth TEXT')
-    
-    if 'gender' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN gender TEXT')
-    
-    if 'age' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN age INTEGER')
-    
-    if 'conditions' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN conditions TEXT')
-    
-    if 'medications' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN medications TEXT')
-    
-    if 'created_at' not in column_names:
-        cursor.execute('ALTER TABLE patients ADD COLUMN created_at TIMESTAMP')
-        # Update existing rows to set created_at to current time
-        cursor.execute('UPDATE patients SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL')
-    
-    # Add patient_id column to pdfs table if it doesn't exist
-    cursor.execute("PRAGMA table_info(uploaded_pdfs)")
-    columns = cursor.fetchall()
-    column_names = [column[1] for column in columns]
-    
-    if 'patient_id' not in column_names:
-        cursor.execute('''
-        ALTER TABLE uploaded_pdfs ADD COLUMN patient_id INTEGER
-        ''')
-    
-    # Add patient_name column to pdfs table if it doesn't exist
-    if 'patient_name' not in column_names:
-        cursor.execute('''
-        ALTER TABLE uploaded_pdfs ADD COLUMN patient_name TEXT
-        ''')
     
     # Create healthcare_systems table
     cursor.execute('''
@@ -140,19 +109,21 @@ def init_db():
     )
     ''')
     
-    # Create table for JSX templates associated with healthcare systems
+    # Create universal_pdfs table
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS healthcare_templates (
+    CREATE TABLE IF NOT EXISTS universal_pdfs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        healthcare_system_id INTEGER NOT NULL,
-        template_name TEXT NOT NULL,
-        template_content TEXT NOT NULL,
+        original_filename TEXT UNIQUE NOT NULL,
+        html_content TEXT,
+        html_filename TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (healthcare_system_id) REFERENCES healthcare_systems (id),
-        UNIQUE (healthcare_system_id, template_name)
+        healthcare_system_id INTEGER
     )
     ''')
+    
+    # Drop healthcare_templates table if it exists
+    cursor.execute("DROP TABLE IF EXISTS healthcare_templates")
     
     # Populate healthcare_systems table with data from hospitalSystems.js if empty
     cursor.execute("SELECT COUNT(*) FROM healthcare_systems")
@@ -384,40 +355,39 @@ async def upload_pdf(
             conn.close()
             raise HTTPException(status_code=404, detail="User not found")
         
-        # Get user's full name and replace spaces with underscores
-        doctor_name = user['name'].replace(' ', '_')
-        
         # Get patient name if patient_id is provided
-        patient_name = "unassigned"
+        patient_name = None
         if patient_id:
             cursor.execute("SELECT name FROM patients WHERE id = ?", (patient_id,))
             patient = cursor.fetchone()
             if patient:
-                patient_name = patient['name'].replace(' ', '_')
+                patient_name = patient['name']
                 print(f"Using patient name: {patient_name}")
             else:
                 print(f"Patient with ID {patient_id} not found")
                 patient_id = None  # Reset patient_id if patient not found
-        else:
-            print("No patient_id provided")
         
         # Check if the file is a PDF
         if not file.filename.lower().endswith('.pdf'):
             conn.close()
             raise HTTPException(status_code=400, detail="Only PDF files are allowed")
         
-        # Create the new filename with the required format: [original filename]_[doctor fullname]_[patient fullname]
+        # Use the original filename without renaming
         original_filename = file.filename
-        filename_base, file_extension = os.path.splitext(original_filename)
-        new_filename = f"{filename_base}_{doctor_name}_{patient_name}{file_extension}"
         
         # Make sure the filename is secure
-        new_filename = re.sub(r'[^\w\s.-]', '', new_filename)
-        new_filename = re.sub(r'\s+', '_', new_filename)
+        secure_filename = re.sub(r'[^\w\s.-]', '', original_filename)
+        secure_filename = re.sub(r'\s+', '_', secure_filename)
         
-        file_path = os.path.join(UPLOAD_DIR, new_filename)
+        # Instead of adding a counter, overwrite existing files with the same name
+        file_path = os.path.join(UPLOAD_DIR, secure_filename)
         
-        # Save the file to disk
+        # If the file already exists, remove it first
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Removed existing file: {file_path}")
+        
+        # Save the file to disk with the secure filename
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
         
@@ -425,13 +395,44 @@ async def upload_pdf(
         is_fillable = is_pdf_fillable(file_path)
         print(f"PDF is fillable: {is_fillable}")
         
+        # Check if this original filename exists in the universal_pdfs table
+        cursor.execute(
+            "SELECT id, html_content, html_filename FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        universal_pdf = cursor.fetchone()
+        
+        # Check if the HTML file actually exists in the html_outputs directory
+        has_html_content = universal_pdf and universal_pdf['html_content'] is not None
+        has_html_filename = universal_pdf and universal_pdf['html_filename'] is not None
+        
+        html_file_exists = False
+        if has_html_filename:
+            html_path = os.path.join(HTML_OUTPUT_DIR, universal_pdf['html_filename'])
+            html_file_exists = os.path.exists(html_path)
+        
+        # Only consider it as having HTML if both the database record and file exist
+        has_html = has_html_content and has_html_filename and html_file_exists
+        
+        # If the HTML file doesn't exist but we have a record, update the database
+        if has_html_content and has_html_filename and not html_file_exists:
+            cursor.execute(
+                "UPDATE universal_pdfs SET html_content = NULL, html_filename = NULL WHERE original_filename = ?",
+                (original_filename,)
+            )
+            conn.commit()
+            has_html = False
+            has_html_content = False
+            has_html_filename = False
+        
         # Save the PDF information to the database with patient information
         cursor.execute(
             """
             INSERT INTO uploaded_pdfs (user_id, filename, original_filename, is_fillable, patient_id, patient_name)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (user_id, new_filename, original_filename, is_fillable, patient_id, patient_name if patient_id else None)
+            (user_id, secure_filename, original_filename, is_fillable, patient_id, patient_name)
         )
         conn.commit()
         
@@ -449,11 +450,38 @@ async def upload_pdf(
         )
         
         pdf = cursor.fetchone()
-        
         conn.close()
         
+        # Start processing if needed
+        processing_started = False
+        html_generated = False
+        
+        if not has_html:
+            try:
+                # Get the full path to the uploaded PDF
+                pdf_path = os.path.join(UPLOAD_DIR, secure_filename)
+                
+                # Make sure the file exists
+                if not os.path.exists(pdf_path):
+                    raise Exception(f"PDF file not found at {pdf_path}")
+                
+                # Process the PDF synchronously instead of in the background
+                print(f"Starting chain1 processing for {original_filename} at {pdf_path}")
+                result = chain1(pdf_path, "")  # Empty coordinates for now
+                
+                processing_started = True
+                html_generated = result
+                
+                print(f"Finished processing for {original_filename}, result: {result}")
+            except Exception as e:
+                print(f"Error processing PDF: {str(e)}")
+                # Even if there's an error, we'll still return success for the upload
+        else:
+            print(f"HTML already exists for {original_filename}, skipping processing")
+            html_generated = True
+        
         return {
-            "message": "PDF uploaded successfully",
+            "message": "PDF uploaded successfully" + (" and processing started" if processing_started else ""),
             "pdf": {
                 "id": pdf['id'],
                 "filename": pdf['filename'],
@@ -462,7 +490,12 @@ async def upload_pdf(
                 "url": f"/uploads/{pdf['filename']}",
                 "isFillable": is_fillable,
                 "patientId": pdf['patient_id'],
-                "patientName": pdf['patient_name']
+                "patientName": pdf['patient_name'],
+                "hasUniversalVersion": universal_pdf is not None,
+                "processingStarted": processing_started,
+                "hasHtmlContent": has_html_content or html_generated,
+                "hasHtmlFilename": has_html_filename or html_generated,
+                "htmlGenerated": html_generated
             }
         }
     except Exception as e:
@@ -811,57 +844,53 @@ async def create_patient(user_id: int, request: Request):
         # Get request body
         data = await request.json()
         
-        # Validate required fields
-        if 'name' not in data:
-            raise HTTPException(status_code=400, detail="Missing required field: name")
-        
-        patient_name = data['name']
-        
-        # Get optional fields with default values
-        patient_email = data.get('email', None)
-        patient_dob = data.get('date_of_birth', None)
-        patient_gender = data.get('gender', None)
-        patient_age = data.get('age', None)
-        patient_conditions = data.get('conditions', None)
-        patient_medications = data.get('medications', None)
-        
         # Create a new database connection for this request
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Create a new patient with all fields
+        # Verify the user exists
+        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Insert the new patient
         cursor.execute(
             """
-            INSERT INTO patients (
-                name, user_id, email, date_of_birth, gender, 
-                age, conditions, medications, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO patients (name, user_id, email, dob, gender, age, conditions, medications)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                patient_name, user_id, patient_email, patient_dob, 
-                patient_gender, patient_age, patient_conditions, patient_medications
+                data.get('name', ''),
+                user_id,
+                data.get('email', ''),
+                data.get('dob', ''),
+                data.get('gender', ''),
+                data.get('age', ''),
+                data.get('conditions', ''),
+                data.get('medications', '')
             )
         )
         conn.commit()
         
-        # Get the newly created patient
+        # Get the ID of the newly inserted patient
         patient_id = cursor.lastrowid
+        
+        # Get the patient information
         cursor.execute(
             """
-            SELECT id, name, user_id, email, date_of_birth, gender, 
-                   age, conditions, medications, created_at 
-            FROM patients WHERE id = ?
-            """, 
+            SELECT id, name, user_id, email, dob, gender, age, conditions, medications, created_at
+            FROM patients
+            WHERE id = ?
+            """,
             (patient_id,)
         )
+        
         patient = cursor.fetchone()
-        
-        # Close the connection
         conn.close()
-        
-        if not patient:
-            raise HTTPException(status_code=500, detail="Failed to create patient")
         
         # Return the patient data
         return {
@@ -871,7 +900,7 @@ async def create_patient(user_id: int, request: Request):
                 "name": patient[1],
                 "userId": patient[2],
                 "email": patient[3],
-                "dateOfBirth": patient[4],
+                "dob": patient[4],
                 "gender": patient[5],
                 "age": patient[6],
                 "conditions": patient[7],
@@ -1205,7 +1234,266 @@ def get_patient_files(patient_id: int):
         print(f"Error fetching patient files: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch patient files: {str(e)}")
 
+# Add or update HTML content for a universal PDF
+@app.post("/api/universal-pdfs")
+async def add_universal_pdf(request: Request):
+    try:
+        data = await request.json()
+        
+        if 'original_filename' not in data or 'html_content' not in data:
+            raise HTTPException(status_code=400, detail="Missing required fields: original_filename and html_content")
+        
+        original_filename = data['original_filename']
+        html_content = data['html_content']
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Check if this PDF already exists in the universal_pdfs table
+        cursor.execute(
+            "SELECT id FROM universal_pdfs WHERE original_filename = ?", 
+            (original_filename,)
+        )
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing record
+            cursor.execute(
+                '''
+                UPDATE universal_pdfs 
+                SET html_content = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE original_filename = ?
+                ''',
+                (html_content, original_filename)
+            )
+            pdf_id = existing['id']
+        else:
+            # Insert new record
+            cursor.execute(
+                '''
+                INSERT INTO universal_pdfs 
+                (original_filename, html_content) 
+                VALUES (?, ?)
+                ''',
+                (original_filename, html_content)
+            )
+            pdf_id = cursor.lastrowid
+        
+        conn.commit()
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "Universal PDF saved successfully",
+            "id": pdf_id
+        }
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"Error saving universal PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save universal PDF: {str(e)}")
+
+# Get HTML content for a universal PDF by original filename
+@app.get("/api/universal-pdfs/{original_filename}")
+def get_universal_pdf(original_filename: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT id, original_filename, html_content, created_at, updated_at FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        pdf = cursor.fetchone()
+        conn.close()
+        
+        if not pdf:
+            raise HTTPException(status_code=404, detail="Universal PDF not found")
+        
+        return {
+            "id": pdf['id'],
+            "original_filename": pdf['original_filename'],
+            "html_content": pdf['html_content'],
+            "created_at": pdf['created_at'],
+            "updated_at": pdf['updated_at']
+        }
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"Error fetching universal PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch universal PDF: {str(e)}")
+
+# Get all universal PDFs
+@app.get("/api/universal-pdfs")
+def get_all_universal_pdfs():
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT id, original_filename, created_at, updated_at FROM universal_pdfs ORDER BY created_at DESC"
+        )
+        
+        pdfs = []
+        for row in cursor.fetchall():
+            pdfs.append({
+                "id": row['id'],
+                "original_filename": row['original_filename'],
+                "created_at": row['created_at'],
+                "updated_at": row['updated_at']
+            })
+        
+        conn.close()
+        return {"pdfs": pdfs}
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"Error fetching universal PDFs: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch universal PDFs: {str(e)}")
+
+# Endpoint to check if HTML is ready for a PDF
+@app.get("/api/check-html/{original_filename}")
+def check_html_readiness(original_filename: str):
+    try:
+        # Extract base name without extension
+        base_name = os.path.splitext(original_filename)[0]
+        html_filename = f"{base_name}.html"
+        html_path = os.path.join(HTML_OUTPUT_DIR, html_filename)
+        
+        # Check if the HTML file exists in the directory
+        html_exists = os.path.exists(html_path)
+        
+        # Check if the database record exists and has HTML content
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT html_filename, html_content FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        pdf = cursor.fetchone()
+        conn.close()
+        
+        db_has_html = pdf and pdf['html_filename'] and pdf['html_content']
+        
+        # If the file doesn't exist but we have a database record, update the database
+        if not html_exists and db_has_html:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE universal_pdfs SET html_content = NULL, html_filename = NULL WHERE original_filename = ?",
+                (original_filename,)
+            )
+            conn.commit()
+            conn.close()
+            db_has_html = False
+        
+        return {
+            "ready": html_exists and db_has_html,
+            "htmlFilename": html_filename if html_exists else None,
+            "originalFilename": original_filename,
+            "fileExists": html_exists,
+            "dbHasHtml": db_has_html
+        }
+    except Exception as e:
+        print(f"Error checking HTML readiness: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to check HTML readiness: {str(e)}")
+
+# Add this function to server.py
+def ensure_db_schema():
+    """Ensure the database schema is up to date with all required columns"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Check if html_filename column exists in universal_pdfs table
+    cursor.execute("PRAGMA table_info(universal_pdfs)")
+    columns = cursor.fetchall()
+    column_names = [column[1] for column in columns]
+    
+    # Add html_filename column if it doesn't exist
+    if 'html_filename' not in column_names:
+        print("Adding html_filename column to universal_pdfs table")
+        cursor.execute('ALTER TABLE universal_pdfs ADD COLUMN html_filename TEXT')
+        conn.commit()
+    
+    conn.close()
+
+# Call this function during server startup
+ensure_db_schema()
+
 # Run the server with uvicorn
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True) 
+    uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True)
+
+@app.get("/api/debug/html-content/{original_filename}")
+def debug_html_content(original_filename: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "SELECT html_content, html_filename FROM universal_pdfs WHERE original_filename = ?",
+            (original_filename,)
+        )
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            return {"error": "No record found", "filename": original_filename}
+        
+        html_content = result['html_content']
+        html_filename = result['html_filename']
+        
+        # Check if the HTML file exists
+        html_path = os.path.join(HTML_OUTPUT_DIR, html_filename)
+        file_exists = os.path.exists(html_path)
+        
+        return {
+            "filename": original_filename,
+            "html_filename": html_filename,
+            "has_html_content": html_content is not None,
+            "html_content_length": len(html_content) if html_content else 0,
+            "file_exists": file_exists,
+            "file_path": html_path
+        }
+    except Exception as e:
+        return {"error": str(e), "filename": original_filename}
+
+# Add a CORS middleware specifically for the HTML outputs
+@app.middleware("http")
+async def add_cors_headers_for_html(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/html_outputs"):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
+
+@app.get("/api/html-content/{original_filename}")
+def get_html_content(original_filename: str):
+    try:
+        # Extract base name without extension
+        base_name = os.path.splitext(original_filename)[0]
+        html_filename = f"{base_name}.html"
+        html_path = os.path.join(HTML_OUTPUT_DIR, html_filename)
+        
+        # Check if the HTML file exists
+        if not os.path.exists(html_path):
+            raise HTTPException(status_code=404, detail=f"HTML file not found: {html_filename}")
+        
+        # Read the HTML file
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        
+        # Return the HTML content with the correct content type
+        return Response(content=html_content, media_type="text/html")
+    except Exception as e:
+        print(f"Error fetching HTML content: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch HTML content: {str(e)}") 
