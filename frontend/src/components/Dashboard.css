@@ -1740,23 +1740,21 @@ textarea.patient-input {
 
 .template-item-date {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #888;
+  margin-top: 0.25rem;
 }
 
-.template-name {
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.template-date {
+.template-item-hospital {
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: #4FFFB0;
+  margin-top: 0.25rem;
+  font-style: italic;
 }
 
-.template-actions {
+.template-item-actions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 .delete-button {

@@ -685,4 +685,444 @@
   height: 600px;
   border: none;
   background: white;
+}
+
+/* Add styles for the form step-by-step interface */
+.form-step-container {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.form-progress-bar {
+  height: 6px;
+  background-color: #e0e0e0;
+  border-radius: 3px;
+  margin-bottom: 15px;
+  overflow: hidden;
+}
+
+.form-progress-indicator {
+  height: 100%;
+  background-color: #4FFFB0;
+  transition: width 0.3s ease;
+}
+
+.form-step-counter {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.form-step-content {
+  margin-bottom: 30px;
+}
+
+.form-navigation-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.form-nav-button {
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.prev-button {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #3B2B6D;
+  border: 1px solid #3B2B6D;
+}
+
+.prev-button:hover {
+  background-color: rgba(59, 43, 109, 0.1);
+}
+
+.next-button {
+  background-color: #3B2B6D;
+  color: white;
+}
+
+.next-button:hover {
+  background-color: #2a1f4f;
+}
+
+.submit-button {
+  background-color: #4FFFB0;
+  color: #3B2B6D;
+}
+
+.submit-button:hover {
+  background-color: #3ee69f;
+}
+
+.form-interactive-container {
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 400px;
+}
+
+/* Style form inputs within the step-by-step interface */
+.form-step-content input[type="text"],
+.form-step-content input[type="email"],
+.form-step-content input[type="date"],
+.form-step-content input[type="number"],
+.form-step-content select,
+.form-step-content textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.form-step-content label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-step-content input[type="radio"],
+.form-step-content input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.form-step-content .radio-group,
+.form-step-content .checkbox-group {
+  margin-bottom: 15px;
+}
+
+.form-step-content .radio-option,
+.form-step-content .checkbox-option {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* Add styles for the view toggle button */
+.view-toggle {
+  display: flex;
+  justify-content: center;
+}
+
+/* Make sure the form content container has proper scrolling */
+.form-content-container {
+  max-height: 700px;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+/* Add styles for form elements within the step-by-step view */
+.form-step-content div[data-field-id] {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #eee;
+}
+
+.form-step-content p {
+  margin-bottom: 10px;
+  color: #666;
+}
+
+/* Style for required field indicators */
+.form-step-content .required-field {
+  color: #ff4f4f;
+  margin-left: 4px;
+}
+
+/* Add styles for the typeform-style interface */
+.form-step-content .form-step {
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Style for tooltips */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  cursor: help;
+}
+
+.tooltip .tooltip-text {
+  visibility: hidden;
+  width: 200px;
+  background-color: #3B2B6D;
+  color: white;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -100px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Style for prefilled fields */
+.prefilled-field {
+  background-color: rgba(79, 255, 176, 0.1) !important;
+  border: 1px solid rgba(79, 255, 176, 0.3) !important;
+}
+
+/* Style for the prefilled note */
+.prefilled-note {
+  background-color: rgba(59, 43, 109, 0.05);
+  border-left: 3px solid #4FFFB0;
+  padding: 10px 15px;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 14px;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Add styles for the form submission loading state */
+.form-submission-loading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: 8px;
+}
+
+.form-submission-loading p {
+  margin-top: 15px;
+  color: #3B2B6D;
+  font-weight: 600;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(59, 43, 109, 0.2);
+  border-top: 4px solid #4FFFB0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Style for disabled buttons */
+.form-nav-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Add styles for form validation */
+.form-step-content input:invalid,
+.form-step-content select:invalid,
+.form-step-content textarea:invalid {
+  border-color: #ff4f4f;
+  background-color: rgba(255, 79, 79, 0.05);
+}
+
+.validation-error {
+  color: #ff4f4f;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Add styles for form success message */
+.form-success-message {
+  background-color: rgba(79, 255, 176, 0.1);
+  border: 1px solid rgba(79, 255, 176, 0.3);
+  color: #3B2B6D;
+  padding: 15px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.form-success-message h3 {
+  color: #4FFFB0;
+  margin-bottom: 10px;
+}
+
+/* Simplified Form Editor styles */
+.form-editor-simplified {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+}
+
+.form-editor-simplified .form-content-container {
+  width: 100%;
+  height: 100%;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: white;
+}
+
+.form-editor-simplified .form-interactive-container {
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  border-radius: 0;
+  overflow: hidden;
+  padding: 20px;
+}
+
+.form-editor-simplified .form-step-container {
+  background-color: white;
+  border-radius: 0;
+  padding: 20px;
+  box-shadow: none;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.form-editor-simplified .loading-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #333;
+  font-style: italic;
+}
+
+.form-editor-simplified .no-content-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #333;
+  font-style: italic;
+}
+
+/* Make sure form inputs are styled properly */
+.form-editor-simplified input,
+.form-editor-simplified select,
+.form-editor-simplified textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.form-editor-simplified label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Ensure the form takes up all available space */
+.form-editor-simplified .form-step-content {
+  min-height: calc(100vh - 200px);
+}
+
+/* Styles for direct HTML rendering */
+.direct-html-container {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  overflow-y: auto;
+  background-color: white;
+}
+
+.direct-html-content {
+  max-width: 800px;
+  margin: 0 auto;
+  font-family: Arial, sans-serif;
+}
+
+/* Override any styles that might cause the form to open in a new tab */
+.direct-html-content form {
+  display: block;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+/* Make sure scripts don't execute in a way that redirects */
+.direct-html-content script {
+  display: none;
+}
+
+/* Style form inputs within the direct HTML content */
+.direct-html-content input,
+.direct-html-content select,
+.direct-html-content textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.direct-html-content label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+.direct-html-content button {
+  background-color: #3B2B6D;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.direct-html-content button:hover {
+  background-color: #2a1f4f;
+}
+
+/* Prevent form submission from navigating away */
+.direct-html-content form {
+  pointer-events: none;
+}
+
+.direct-html-content input,
+.direct-html-content select,
+.direct-html-content textarea,
+.direct-html-content button {
+  pointer-events: auto;
 } 

@@ -508,16 +508,79 @@ const Dashboard = ({
         return;
       }
       
+      console.log("handleAssignPatient - Selected patient ID:", selectedPatient);
+      console.log("handleAssignPatient - formToEdit:", JSON.stringify(formToEdit, null, 2));
+      
       // Close the patient assignment popup
       setShowPatientAssignmentPopup(false);
       
-      // Now that we have a patient selected, open the file picker
-      fileInputRef.current.click();
+      // If we have a form to edit (template), process it with chain2
+      if (formToEdit && formToEdit.htmlFilename) {
+        console.log("handleAssignPatient - Processing template with chain2");
+        console.log("handleAssignPatient - Template filename:", formToEdit.htmlFilename);
+        
+        setIsProcessingTemplate(true);
+        setProcessingMessage(`Filling form for patient...`);
+        
+        // Call the API to fill the template with patient and doctor data
+        const requestData = {
+          template_filename: formToEdit.htmlFilename,
+          patient_id: selectedPatient,
+          user_id: user.id
+        };
+        
+        console.log("handleAssignPatient - API request data:", JSON.stringify(requestData, null, 2));
+        
+        const response = await fetch('/api/fill-template', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+        
+        console.log("handleAssignPatient - API response status:", response.status);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("handleAssignPatient - API error response:", errorText);
+          try {
+            const errorData = JSON.parse(errorText);
+            console.error("handleAssignPatient - Parsed error data:", errorData);
+            throw new Error(errorData.detail || 'Failed to fill template');
+          } catch (parseError) {
+            console.error("handleAssignPatient - Could not parse error response as JSON:", parseError);
+            throw new Error(errorText || 'Failed to fill template');
+          }
+        }
+        
+        const data = await response.json();
+        console.log("handleAssignPatient - API success response:", JSON.stringify(data, null, 2));
+        
+        // Hide the loading overlay
+        setIsProcessingTemplate(false);
+        
+        // Show success message
+        setUploadSuccess(`Form filled successfully! Opening filled form...`);
+        
+        // Open the filled form in a new tab
+        const filledFormUrl = `/api/filled-form/${encodeURIComponent(data.filled_template_filename)}?user_id=${user.id}`;
+        console.log("handleAssignPatient - Opening filled form URL:", filledFormUrl);
+        window.open(filledFormUrl, '_blank');
+        
+        // Return here to prevent falling through to the file upload code
+        return;
+      } else {
+        console.log("handleAssignPatient - No template to process, opening file picker");
+        // If no template selected, just open the file picker for PDF upload
+        fileInputRef.current.click();
+      }
       
     } catch (error) {
-      console.error('Error assigning patient:', error);
-      setUploadError('Failed to assign patient');
-      setTimeout(() => setUploadError(''), 3000);
+      console.error('Error filling template:', error);
+      setUploadError(`Failed to fill template: ${error.message}`);
+      setTimeout(() => setUploadError(''), 5000);
+      setIsProcessingTemplate(false);
     }
   };
   
@@ -554,6 +617,8 @@ const Dashboard = ({
         medications: patientMedications || null
       };
       
+      console.log('Sending patient data:', patientData);
+      
       // Send the request to create a new patient
       const response = await fetch(`/api/user/${user.id}/patients`, {
         method: 'POST',
@@ -564,10 +629,13 @@ const Dashboard = ({
       });
       
       if (!response.ok) {
-        throw new Error('Failed to add patient');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server error response:', errorData);
+        throw new Error(errorData.detail || 'Failed to add patient');
       }
       
       const data = await response.json();
+      console.log('Server response:', data);
       
       // Add the new patient to the patients list
       setPatients([...patients, data.patient]);
@@ -598,7 +666,7 @@ const Dashboard = ({
       
     } catch (error) {
       console.error('Error adding patient:', error);
-      setUploadError('Failed to add patient');
+      setUploadError(`Failed to add patient: ${error.message}`);
       setTimeout(() => setUploadError(''), 3000);
     }
   };
@@ -686,7 +754,57 @@ const Dashboard = ({
       if (response.ok) {
         const data = await response.json();
         console.log('Templates data:', data);
-        setTemplates(data.templates || []);
+        
+        // Filter templates to only include those with .pdf extension
+        const filteredTemplates = data.templates ? data.templates.filter(template => {
+          // Only keep templates where originalFilename ends with .pdf
+          const hasPdfExtension = template.originalFilename.toLowerCase().endsWith('.pdf');
+          
+          if (!hasPdfExtension) {
+            console.log(`Filtering out non-PDF template: ${template.originalFilename}`);
+          }
+          
+          return hasPdfExtension;
+        }) : [];
+        
+        // Remove duplicates by using a Map with the base filename (without extension) as key
+        const uniqueTemplatesMap = new Map();
+        
+        filteredTemplates.forEach(template => {
+          // Get the base name without extension
+          const baseName = template.originalFilename.replace(/\.pdf$/i, '');
+          
+          // If this is a filled version (starts with filled_), skip it
+          if (baseName.startsWith('filled_')) {
+            console.log(`Filtering out filled template: ${template.originalFilename}`);
+            return;
+          }
+          
+          // If we haven't seen this base name before, or if this template is from the user's hospital system
+          // (prioritize hospital system templates)
+          if (!uniqueTemplatesMap.has(baseName) || template.hospitalSystem === user.hospitalSystem) {
+            uniqueTemplatesMap.set(baseName, template);
+          }
+        });
+        
+        // Convert the Map values back to an array
+        const uniqueTemplates = Array.from(uniqueTemplatesMap.values());
+        
+        // Log each template for debugging
+        if (uniqueTemplates.length > 0) {
+          console.log(`Displaying ${uniqueTemplates.length} unique templates:`);
+          uniqueTemplates.forEach((template, index) => {
+            console.log(`Template ${index + 1}:`, {
+              originalFilename: template.originalFilename,
+              htmlFilename: template.htmlFilename,
+              hospitalSystem: template.hospitalSystem || 'None'
+            });
+          });
+        } else {
+          console.log('No templates to display after filtering');
+        }
+        
+        setTemplates(uniqueTemplates);
       } else {
         console.error('Error fetching templates:', response.statusText);
         // Try the test endpoint to see if the API is working
@@ -700,14 +818,24 @@ const Dashboard = ({
 
   // Update the handleUseTemplate function
   const handleUseTemplate = (template) => {
+    console.log("handleUseTemplate - Template object:", JSON.stringify(template, null, 2));
+    
+    // Ensure the original filename has a .pdf extension
+    let originalFilename = template.originalFilename;
+    if (!originalFilename.toLowerCase().endsWith('.pdf')) {
+      originalFilename = `${originalFilename}.pdf`;
+    }
+    
     // Create a form object from the template
     const formData = {
-      title: template.originalFilename.replace('.pdf', ''),
-      originalFilename: template.originalFilename,
-      filename: template.originalFilename,
-      pdfFilename: template.originalFilename,
+      title: originalFilename.replace(/\.pdf$/i, ''),
+      originalFilename: originalFilename,
+      filename: originalFilename,
+      pdfFilename: originalFilename,
       htmlFilename: template.htmlFilename
     };
+    
+    console.log("handleUseTemplate - Created formData:", JSON.stringify(formData, null, 2));
     
     // Set the form to be edited
     setFormToEdit(formData);
@@ -715,7 +843,7 @@ const Dashboard = ({
     // Close the templates modal
     setShowTemplatesModal(false);
     
-    // Open the patient assignment modal instead of the form editor
+    // Open the patient assignment modal
     setShowPatientAssignmentPopup(true);
   };
 
@@ -724,16 +852,32 @@ const Dashboard = ({
     // Stop event propagation to prevent the modal from closing
     event.stopPropagation();
     
-    if (window.confirm(`Are you sure you want to delete the template "${template.originalFilename.replace(/\.pdf$/i, '')}"?`)) {
+    // Ensure the original filename has a .pdf extension
+    let originalFilename = template.originalFilename;
+    if (!originalFilename.toLowerCase().endsWith('.pdf')) {
+      originalFilename = `${originalFilename}.pdf`;
+    }
+    
+    const templateName = originalFilename.replace(/\.pdf$/i, '');
+    const hospitalInfo = template.hospitalSystem ? ` from ${template.hospitalSystem}` : '';
+    
+    console.log("Deleting template:", {
+      originalFilename,
+      templateName,
+      hospitalSystem: template.hospitalSystem || 'None',
+      id: template.id
+    });
+    
+    if (window.confirm(`Are you sure you want to delete the template "${templateName}"${hospitalInfo}?`)) {
       try {
-        const response = await fetch(`/api/templates/${encodeURIComponent(template.originalFilename)}?user_id=${user.id}`, {
+        const response = await fetch(`/api/templates/${encodeURIComponent(originalFilename)}?user_id=${user.id}`, {
           method: 'DELETE',
         });
         
         if (response.ok) {
           // Remove the template from the templates list
           setTemplates(templates.filter(t => t.originalFilename !== template.originalFilename));
-          setUploadSuccess(`Template "${template.originalFilename.replace(/\.pdf$/i, '')}" deleted successfully`);
+          setUploadSuccess(`Template "${templateName}" deleted successfully`);
           setTimeout(() => setUploadSuccess(''), 3000);
         } else {
           const errorData = await response.json();
@@ -747,6 +891,25 @@ const Dashboard = ({
       }
     }
   };
+
+  // Clear formToEdit when patient assignment popup is closed without submitting
+  useEffect(() => {
+    if (!showPatientAssignmentPopup) {
+      console.log("useEffect - Patient assignment popup closed, formToEdit:", formToEdit);
+      
+      // Small delay to avoid clearing it during the actual submission process
+      const timeoutId = setTimeout(() => {
+        if (!isProcessingTemplate) {
+          console.log("useEffect - Clearing formToEdit after delay");
+          setFormToEdit(null);
+        } else {
+          console.log("useEffect - Not clearing formToEdit because isProcessingTemplate is true");
+        }
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [showPatientAssignmentPopup, isProcessingTemplate]);
 
   if (showFormEditor) {
     // Find the form to edit
@@ -940,24 +1103,29 @@ const Dashboard = ({
             <h2>{user?.hospitalSystem || 'Your'} Templates</h2>
             {templates.length > 0 ? (
               <div className="recent-forms-list">
-                {templates.slice(0, 3).map((template, index) => (
-                  <div className="recent-form-item" key={index}>
-                    <div className="recent-form-info">
-                      <span className="recent-form-name">{template.originalFilename.replace(/\.pdf$/i, '')}</span>
-                      <span className="recent-form-date">
-                        {new Date(template.updatedAt).toLocaleDateString()}
-                      </span>
+                {templates.slice(0, 3).map((template, index) => {
+                  // Get clean template name without .pdf extension
+                  const templateName = template.originalFilename.replace(/\.pdf$/i, '');
+                  
+                  return (
+                    <div className="recent-form-item" key={index}>
+                      <div className="recent-form-info">
+                        <span className="recent-form-name">{templateName}</span>
+                        <span className="recent-form-date">
+                          {new Date(template.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="recent-form-actions">
+                        <button 
+                          className="form-card-action use-template"
+                          onClick={() => handleUseTemplate(template)}
+                        >
+                          Use
+                        </button>
+                      </div>
                     </div>
-                    <div className="recent-form-actions">
-                      <button 
-                        className="form-card-action use-template"
-                        onClick={() => handleUseTemplate(template)}
-                      >
-                        Use
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="recent-forms-empty">No templates available</p>
@@ -1255,7 +1423,12 @@ const Dashboard = ({
                   <button
                     type="button"
                     className="action-button cancel-button"
-                    onClick={() => setShowPatientAssignmentPopup(false)}
+                    onClick={() => {
+                      console.log("Cancel button clicked - Current formToEdit:", formToEdit);
+                      setShowPatientAssignmentPopup(false);
+                      setFormToEdit(null);
+                      console.log("Cancel button clicked - formToEdit set to null");
+                    }}
                   >
                     Cancel
                   </button>
@@ -1264,7 +1437,7 @@ const Dashboard = ({
                     className="action-button submit-button"
                     disabled={!selectedPatient}
                   >
-                    Upload
+                    Fill
                   </button>
                 </div>
               </form>
@@ -1598,30 +1771,42 @@ const Dashboard = ({
                 </div>
               ) : (
                 <div className="templates-grid">
-                  {templates.map((template, index) => (
-                    <div key={index} className="template-item">
-                      <div className="template-item-header">
-                        <div className="template-item-name">{template.originalFilename.replace(/\.pdf$/i, '')}</div>
-                        <div className="template-item-date">
-                          Updated: {new Date(template.updatedAt).toLocaleDateString()}
+                  {templates.map((template, index) => {
+                    // Get clean template name without .pdf extension
+                    const templateName = template.originalFilename.replace(/\.pdf$/i, '');
+                    
+                    return (
+                      <div key={index} className="template-item">
+                        <div className="template-item-header">
+                          <div className="template-item-name">
+                            {templateName}
+                          </div>
+                          <div className="template-item-date">
+                            Updated: {new Date(template.updatedAt).toLocaleDateString()}
+                          </div>
+                          {template.hospitalSystem && (
+                            <div className="template-item-hospital">
+                              Hospital: {template.hospitalSystem}
+                            </div>
+                          )}
+                        </div>
+                        <div className="template-item-actions">
+                          <button 
+                            className="action-button submit-button"
+                            onClick={() => handleUseTemplate(template)}
+                          >
+                            Use Template
+                          </button>
+                          <button 
+                            className="action-button delete-button"
+                            onClick={(e) => handleDeleteTemplate(template, e)}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </div>
-                      <div className="template-item-actions">
-                        <button 
-                          className="action-button submit-button"
-                          onClick={() => handleUseTemplate(template)}
-                        >
-                          Use Template
-                        </button>
-                        <button 
-                          className="action-button delete-button"
-                          onClick={(e) => handleDeleteTemplate(template, e)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

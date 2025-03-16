@@ -1,12 +1,12 @@
 from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Request, BackgroundTasks, Response
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Form, Request, BackgroundTasks
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 import PyPDF2
 import json
@@ -14,6 +14,11 @@ import shutil
 from chains.chain1 import chain1
 import pathlib
 import time
+import threading
+import traceback
+import uuid
+import base64
+from contextlib import closing
 
 # Create the FastAPI app
 app = FastAPI()
@@ -92,11 +97,11 @@ def init_db():
         email TEXT,
         date_of_birth TEXT,
         gender TEXT,
-        age INTEGER,
+        age TEXT,
         conditions TEXT,
         medications TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id)
+        FOREIGN KEY (user_id) REFERENCES users (id)
     )
     ''')
     
@@ -868,14 +873,14 @@ async def create_patient(user_id: int, request: Request):
         # Insert the new patient
         cursor.execute(
             """
-            INSERT INTO patients (name, user_id, email, dob, gender, age, conditions, medications)
+            INSERT INTO patients (name, user_id, email, date_of_birth, gender, age, conditions, medications)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 data.get('name', ''),
                 user_id,
                 data.get('email', ''),
-                data.get('dob', ''),
+                data.get('date_of_birth', ''),
                 data.get('gender', ''),
                 data.get('age', ''),
                 data.get('conditions', ''),
@@ -890,7 +895,7 @@ async def create_patient(user_id: int, request: Request):
         # Get the patient information
         cursor.execute(
             """
-            SELECT id, name, user_id, email, dob, gender, age, conditions, medications, created_at
+            SELECT id, name, user_id, email, date_of_birth, gender, age, conditions, medications, created_at
             FROM patients
             WHERE id = ?
             """,
@@ -908,7 +913,7 @@ async def create_patient(user_id: int, request: Request):
                 "name": patient[1],
                 "userId": patient[2],
                 "email": patient[3],
-                "dob": patient[4],
+                "dateOfBirth": patient[4],
                 "gender": patient[5],
                 "age": patient[6],
                 "conditions": patient[7],
@@ -1457,7 +1462,7 @@ def ensure_db_schema():
         name TEXT NOT NULL,
         user_id INTEGER NOT NULL,
         email TEXT,
-        dob TEXT,
+        date_of_birth TEXT,
         gender TEXT,
         age TEXT,
         conditions TEXT,
@@ -1693,66 +1698,45 @@ def get_user_templates(user_id: int):
         safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
         print(f"Sanitized hospital system: {safe_hospital_system}")
         
-        # Path to the hospital system's HTML directory
-        hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
-        print(f"Looking for templates in: {hospital_dir}")
-        
-        # Use a dictionary to track templates by original filename to avoid duplicates
+        # Use a dictionary to track templates by normalized filename to avoid duplicates
         templates_dict = {}
         
-        # Get templates from the filesystem
-        if os.path.exists(hospital_dir):
-            print(f"Directory exists: {hospital_dir}")
-            for filename in os.listdir(hospital_dir):
-                if filename.endswith('.html'):
-                    file_path = os.path.join(hospital_dir, filename)
-                    print(f"Found HTML file: {filename}")
-                    
-                    # Get file stats
-                    file_stats = os.stat(file_path)
-                    
-                    # Get the original filename (remove .html extension)
-                    original_filename = os.path.splitext(filename)[0]
-                    
-                    # Create template object
-                    template = {
-                        "originalFilename": original_filename,
-                        "htmlFilename": filename,
-                        "createdAt": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
-                        "updatedAt": datetime.fromtimestamp(file_stats.st_mtime).isoformat()
-                    }
-                    
-                    # Add to dictionary, overwriting any existing entry with the same original filename
-                    templates_dict[original_filename] = template
-        else:
-            print(f"Directory does not exist: {hospital_dir}")
-            # Create the directory
-            os.makedirs(hospital_dir, exist_ok=True)
-            print(f"Created directory: {hospital_dir}")
-        
-        # Also get templates from the database as a fallback
+        # First, get templates that match the user's hospital system
         cursor.execute(
             """
-            SELECT original_filename, html_filename, created_at, updated_at
+            SELECT id, original_filename, html_filename, created_at, updated_at, hospital_system
             FROM universal_pdfs
             WHERE hospital_system = ? AND html_filename IS NOT NULL
+            ORDER BY updated_at DESC
             """,
             (hospital_system,)
         )
         
-        db_templates = cursor.fetchall()
-        conn.close()
+        hospital_templates = cursor.fetchall()
+        print(f"Found {len(hospital_templates)} templates for hospital system: {hospital_system}")
         
-        # Add database templates that aren't already in the filesystem list
-        for db_template in db_templates:
-            original_filename = db_template['original_filename']
-            if original_filename not in templates_dict:
-                print(f"Adding template from database: {original_filename}")
-                templates_dict[original_filename] = {
+        # Process hospital-specific templates first (these take priority)
+        for template in hospital_templates:
+            original_filename = template['original_filename']
+            
+            # Normalize the filename to handle versioned files (e.g., file_1.pdf, file_2.pdf)
+            # This will treat them as the same base template
+            normalized_filename = re.sub(r'_\d+\.pdf$', '.pdf', original_filename.lower())
+            
+            # Ensure the original filename has a .pdf extension
+            if not normalized_filename.lower().endswith('.pdf'):
+                normalized_filename = f"{normalized_filename}.pdf"
+            
+            # Only add if not already in the dictionary
+            if normalized_filename not in templates_dict:
+                print(f"Adding hospital template: {original_filename}")
+                templates_dict[normalized_filename] = {
+                    "id": template['id'],
                     "originalFilename": original_filename,
-                    "htmlFilename": db_template['html_filename'],
-                    "createdAt": db_template['created_at'],
-                    "updatedAt": db_template['updated_at']
+                    "htmlFilename": template['html_filename'],
+                    "createdAt": template['created_at'],
+                    "updatedAt": template['updated_at'],
+                    "hospitalSystem": template['hospital_system']
                 }
         
         # Convert dictionary to list
@@ -1835,6 +1819,8 @@ def get_user_filled_forms(user_id: int):
 @app.delete("/api/templates/{template_filename}")
 def delete_template(template_filename: str, user_id: int):
     try:
+        print(f"Deleting template: {template_filename} for user ID: {user_id}")
+        
         # Create a new database connection for this request
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
@@ -1849,21 +1835,26 @@ def delete_template(template_filename: str, user_id: int):
             raise HTTPException(status_code=404, detail="User not found")
         
         hospital_system = user['hospital_system']
+        print(f"User's hospital system: {hospital_system}")
         
         # Get the template to verify it belongs to the user's hospital system
         cursor.execute(
-            "SELECT html_filename, hospital_system FROM universal_pdfs WHERE original_filename = ?",
+            "SELECT id, html_filename, hospital_system FROM universal_pdfs WHERE original_filename = ?",
             (template_filename,)
         )
         
         template = cursor.fetchone()
         
         if not template:
+            print(f"Template not found: {template_filename}")
             conn.close()
             raise HTTPException(status_code=404, detail="Template not found")
         
-        # Verify the template belongs to the user's hospital system
-        if template['hospital_system'] != hospital_system:
+        print(f"Found template: ID={template['id']}, hospital_system={template['hospital_system']}")
+        
+        # Verify the template belongs to the user's hospital system or has no hospital system
+        if template['hospital_system'] and template['hospital_system'] != hospital_system:
+            print(f"Permission denied: Template belongs to {template['hospital_system']}, user is from {hospital_system}")
             conn.close()
             raise HTTPException(status_code=403, detail="You don't have permission to delete this template")
         
@@ -1891,9 +1882,11 @@ def delete_template(template_filename: str, user_id: int):
         
         # Delete the template from the database
         cursor.execute(
-            "DELETE FROM universal_pdfs WHERE original_filename = ?",
-            (template_filename,)
+            "DELETE FROM universal_pdfs WHERE id = ?",
+            (template['id'],)
         )
+        
+        print(f"Deleted template from database: ID={template['id']}, original_filename={template_filename}")
         
         conn.commit()
         conn.close()
@@ -2057,6 +2050,316 @@ def root():
             "/api/user/{user_id}/filled-forms"
         ]
     }
+
+# Add this after the other global variables
+# Lock for the fill-template endpoint to prevent concurrent calls
+fill_template_locks = {}
+
+# Endpoint to fill a form template with patient and doctor data
+@app.post("/api/fill-template")
+async def fill_template(request: Request):
+    try:
+        # Parse the request body
+        data = await request.json()
+        template_filename = data.get("template_filename")
+        patient_id = data.get("patient_id")
+        user_id = data.get("user_id")
+        
+        print(f"fill_template - Request data: template_filename={template_filename}, patient_id={patient_id}, user_id={user_id}")
+        
+        if not template_filename or not patient_id or not user_id:
+            raise HTTPException(status_code=400, detail="Missing required fields: template_filename, patient_id, or user_id")
+        
+        # Create a unique lock key for this template and patient
+        lock_key = f"{template_filename}_{patient_id}_{user_id}"
+        
+        # Check if there's already a lock for this template and patient
+        if lock_key in fill_template_locks:
+            print(f"fill_template - Another request is already processing this template for this patient. Lock key: {lock_key}")
+            raise HTTPException(status_code=409, detail="Another request is already processing this template for this patient. Please wait and try again.")
+        
+        # Create a lock for this template and patient
+        fill_template_locks[lock_key] = threading.Lock()
+        
+        try:
+            # Acquire the lock
+            fill_template_locks[lock_key].acquire()
+            
+            # Connect to the database
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            
+            # Get patient data
+            cursor.execute(
+                """
+                SELECT * FROM patients WHERE id = ?
+                """,
+                (patient_id,)
+            )
+            patient_data = cursor.fetchone()
+            
+            if not patient_data:
+                conn.close()
+                raise HTTPException(status_code=404, detail=f"Patient with ID {patient_id} not found")
+            
+            print(f"fill_template - Found patient: {patient_data['name']}")
+            
+            # Get user (doctor) data
+            cursor.execute(
+                """
+                SELECT * FROM users WHERE id = ?
+                """,
+                (user_id,)
+            )
+            user_data = cursor.fetchone()
+            
+            if not user_data:
+                conn.close()
+                raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
+            
+            print(f"fill_template - Found user: {user_data['name']}")
+            
+            # Debug: Print the exact query we're about to run
+            query = f"""
+            SELECT * FROM universal_pdfs WHERE html_filename = '{template_filename}' OR html_filename LIKE '%/{template_filename}'
+            """
+            print(f"fill_template - Running query: {query}")
+            
+            # Get template information
+            cursor.execute(
+                """
+                SELECT * FROM universal_pdfs WHERE html_filename = ? OR html_filename LIKE ?
+                """,
+                (template_filename, f"%/{template_filename}")
+            )
+            template_data = cursor.fetchone()
+            
+            # Debug: Check if template was found
+            if template_data:
+                print(f"fill_template - Found template: {template_data['original_filename']}")
+                print(f"fill_template - Template data: {dict(template_data)}")
+            else:
+                print(f"fill_template - Template not found for filename: {template_filename}")
+                
+                # Debug: Check if the template exists in the database at all
+                cursor.execute("SELECT html_filename FROM universal_pdfs")
+                all_templates = cursor.fetchall()
+                print(f"fill_template - Available templates in database: {[t['html_filename'] for t in all_templates]}")
+                
+                conn.close()
+                raise HTTPException(status_code=404, detail=f"Template {template_filename} not found")
+            
+            # Construct the full template path
+            hospital_system = user_data["hospital_system"]
+            safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+            
+            # Check if the template is in the hospital system directory or root directory
+            template_path = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system, template_filename)
+            print(f"fill_template - Checking template path: {template_path}")
+            
+            if not os.path.exists(template_path):
+                template_path = os.path.join(HTML_OUTPUT_DIR, template_filename)
+                print(f"fill_template - Checking alternative template path: {template_path}")
+                
+                if not os.path.exists(template_path):
+                    # Debug: List files in the directory to see what's available
+                    hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
+                    if os.path.exists(hospital_dir):
+                        print(f"fill_template - Files in hospital directory: {os.listdir(hospital_dir)}")
+                    print(f"fill_template - Files in HTML_OUTPUT_DIR: {os.listdir(HTML_OUTPUT_DIR)}")
+                    
+                    conn.close()
+                    raise HTTPException(status_code=404, detail=f"Template file not found at {template_path}")
+            
+            print(f"fill_template - Using template path: {template_path}")
+            
+            # Prepare context data for chain2
+            context_data = {
+                "patient": {
+                    "name": patient_data["name"],
+                    "dob": patient_data["date_of_birth"] if patient_data["date_of_birth"] else "",
+                    "address": "",  # Add address field to patients table if needed
+                    "ethnicity": "",  # Add ethnicity field to patients table if needed
+                    "race": "",  # Add race field to patients table if needed
+                    "preferred_language": "",  # Add language field to patients table if needed
+                    "email": patient_data["email"] if patient_data["email"] else "",
+                    "gender": patient_data["gender"] if patient_data["gender"] else "",
+                    "age": patient_data["age"] if patient_data["age"] else "",
+                    "conditions": patient_data["conditions"] if patient_data["conditions"] else "",
+                    "medications": patient_data["medications"] if patient_data["medications"] else ""
+                },
+                "doctor": {
+                    "name": user_data["name"],
+                    "specialty": user_data["healthcare_title"],
+                    "license": "",  # Add license field to users table if needed
+                    "facility": user_data["hospital_system"]
+                },
+                "practice": {
+                    "name": user_data["hospital_system"],
+                    "address": "",  # Add address field to hospital systems if needed
+                    "phone": ""  # Add phone field to hospital systems if needed
+                },
+                "procedure": {
+                    "type": "",  # This would come from the form or template
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "codes": []
+                }
+            }
+            
+            # Import chain2 function
+            try:
+                from chains.chain2 import chain2
+                print(f"fill_template - Successfully imported chain2 function")
+            except ImportError as e:
+                print(f"fill_template - Error importing chain2: {str(e)}")
+                conn.close()
+                raise HTTPException(status_code=500, detail=f"Error importing chain2: {str(e)}")
+            
+            # Process the template with chain2
+            print(f"fill_template - Calling chain2 with template_path: {template_path}")
+            success, result = chain2(template_path, context_data)
+            
+            if not success:
+                print(f"fill_template - chain2 processing failed: {result}")
+                conn.close()
+                raise HTTPException(status_code=500, detail=f"Error processing template: {result}")
+            
+            print(f"fill_template - chain2 processing succeeded: {result}")
+            
+            # Close the database connection
+            conn.close()
+            
+            # Return the result
+            return result
+            
+        finally:
+            # Release the lock and remove it from the dictionary
+            if lock_key in fill_template_locks:
+                fill_template_locks[lock_key].release()
+                del fill_template_locks[lock_key]
+                print(f"fill_template - Released lock for {lock_key}")
+            
+    except Exception as e:
+        print(f"Error filling template: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        
+        # Clean up the lock if an exception occurred
+        lock_key = f"{data.get('template_filename')}_{data.get('patient_id')}_{data.get('user_id')}" if 'data' in locals() else None
+        if lock_key and lock_key in fill_template_locks:
+            try:
+                fill_template_locks[lock_key].release()
+            except:
+                pass
+            del fill_template_locks[lock_key]
+            print(f"fill_template - Released lock for {lock_key} after exception")
+            
+        raise HTTPException(status_code=500, detail=f"Failed to fill template: {str(e)}")
+
+@app.get("/api/filled-form/{filename}")
+def get_filled_form(filename: str, user_id: int):
+    """Get the content of a filled HTML form"""
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get user data to determine hospital system
+        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        hospital_system = user['hospital_system']
+        safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+        
+        # Try to find the file in the hospital system directory
+        file_path = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system, filename)
+        if not os.path.exists(file_path):
+            # If not found, try the root directory
+            file_path = os.path.join(HTML_OUTPUT_DIR, filename)
+            if not os.path.exists(file_path):
+                conn.close()
+                raise HTTPException(status_code=404, detail=f"Filled form not found: {filename}")
+        
+        # Read the HTML content
+        with open(file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        conn.close()
+        
+        # Return the HTML content
+        return HTMLResponse(content=html_content, status_code=200)
+    except Exception as e:
+        print(f"Error getting filled form: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get filled form: {str(e)}")
+
+@app.post("/api/submit-form")
+async def submit_form(request: Request):
+    """
+    Handle form submissions from the FormEditor component.
+    Receives form data as JSON and saves it to the database.
+    """
+    try:
+        # Parse the request body
+        data = await request.json()
+        form_id = data.get("formId")
+        form_data = data.get("formData")
+        
+        if not form_data:
+            raise HTTPException(status_code=400, detail="Missing form data")
+        
+        print(f"Received form submission for form ID: {form_id}")
+        print(f"Form data: {form_data}")
+        
+        # Connect to the database
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Check if we need to create a new form submissions table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS form_submissions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            form_id TEXT,
+            submission_data TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+        
+        # Insert the form submission
+        cursor.execute(
+            """
+            INSERT INTO form_submissions (form_id, submission_data)
+            VALUES (?, ?)
+            """,
+            (str(form_id), json.dumps(form_data))
+        )
+        
+        # Commit the changes
+        conn.commit()
+        
+        # Get the ID of the inserted submission
+        submission_id = cursor.lastrowid
+        
+        # Close the database connection
+        conn.close()
+        
+        return {
+            "success": True,
+            "message": "Form submitted successfully",
+            "submission_id": submission_id
+        }
+        
+    except Exception as e:
+        print(f"Error submitting form: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to submit form: {str(e)}")
 
 if __name__ == "__main__":
     # Create hospital system directories at startup
