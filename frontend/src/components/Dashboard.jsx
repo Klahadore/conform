@@ -198,13 +198,13 @@ const Dashboard = ({
         setTimeout(async () => {
           try {
             console.log(`Checking HTML readiness for: ${data.pdf.originalFilename}`);
-            const checkResponse = await fetch(`/api/check-html/${encodeURIComponent(data.pdf.originalFilename)}`);
+            const checkResponse = await fetch(`/api/check-html/${encodeURIComponent(data.pdf.originalFilename)}?user_id=${user.id}`);
             
             if (checkResponse.ok) {
               const checkData = await checkResponse.json();
               console.log("HTML readiness check response:", checkData);
               
-              if (checkData.ready) {
+              if (checkData.htmlGenerated) {
                 setUploadSuccess(`Template Created! "${data.pdf.originalFilename}" is ready to use.`);
               } else {
                 setUploadSuccess(`Template processing in progress. Please check back later.`);
@@ -564,27 +564,36 @@ const Dashboard = ({
     }
   };
 
-  const fetchTemplates = async () => {
-    try {
-      if (!user || !user.id) return;
-      
-      const response = await fetch(`/api/user/${user.id}/templates`);
-      if (response.ok) {
-        const data = await response.json();
-        setTemplates(data.templates);
-      } else {
-        console.error('Error fetching templates:', response.statusText);
-      }
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    }
-  };
-
+  // Add this effect to fetch templates when the component mounts
   useEffect(() => {
     if (user) {
       fetchTemplates();
     }
   }, [user]);
+
+  // Make sure fetchTemplates is defined correctly
+  const fetchTemplates = async () => {
+    try {
+      if (!user || !user.id) return;
+      
+      console.log(`Fetching templates for user ${user.id}`);
+      const response = await fetch(`/api/user/${user.id}/templates`);
+      console.log('Templates response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Templates data:', data);
+        setTemplates(data.templates || []);
+      } else {
+        console.error('Error fetching templates:', response.statusText);
+        // Try the test endpoint to see if the API is working
+        const testResponse = await fetch(`/api/user/${user.id}/templates-test`);
+        console.log('Test endpoint response:', await testResponse.json());
+      }
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
 
   // Update the handleUseTemplate function
   const handleUseTemplate = (template) => {

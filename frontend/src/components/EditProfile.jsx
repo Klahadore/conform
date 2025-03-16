@@ -82,7 +82,7 @@ const EditProfile = ({ user, onClose, onUpdateSuccess }) => {
     };
     
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
+      const response = await fetch(`http://localhost:6969/api/users/${user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

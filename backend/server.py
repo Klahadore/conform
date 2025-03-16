@@ -27,22 +27,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Define paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+HTML_OUTPUT_DIR = os.path.join(BASE_DIR, "html_outputs")
+DB_PATH = os.path.join(BASE_DIR, "conform.db")
+
 # Create directories if they don't exist
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-UNIVERSAL_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "universal_uploads")
-HTML_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "html_outputs")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(UNIVERSAL_UPLOAD_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(HTML_OUTPUT_DIR, exist_ok=True)
 
 # Mount the directories to make files accessible
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
-app.mount("/universal_uploads", StaticFiles(directory=UNIVERSAL_UPLOAD_DIR), name="universal_uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 app.mount("/html_outputs", StaticFiles(directory=HTML_OUTPUT_DIR), name="html_outputs")
 
 # Database setup
-DB_PATH = os.path.join(os.path.dirname(__file__), "conform.db")
-
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -364,10 +363,10 @@ async def upload_pdf(
         original_filename = file.filename
         
         # Create the uploads directory if it doesn't exist
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        os.makedirs(UPLOADS_DIR, exist_ok=True)
         
         # Write the file to disk with the original filename
-        file_path = os.path.join(UPLOAD_DIR, original_filename)
+        file_path = os.path.join(UPLOADS_DIR, original_filename)
         
         # If the file already exists, remove it first
         if os.path.exists(file_path):
@@ -427,7 +426,7 @@ async def upload_pdf(
         # Always process the PDF since we've deleted any existing template
         try:
             # Get the full path to the uploaded PDF
-            pdf_path = os.path.join(UPLOAD_DIR, original_filename)
+            pdf_path = os.path.join(UPLOADS_DIR, original_filename)
             
             # Make sure the file exists
             if not os.path.exists(pdf_path):
@@ -537,7 +536,7 @@ def delete_pdf(pdf_id: int):
             raise HTTPException(status_code=404, detail="PDF not found")
         
         # Get the file path
-        file_path = os.path.join(UPLOAD_DIR, pdf_info['filename'])
+        file_path = os.path.join(UPLOADS_DIR, pdf_info['filename'])
         
         # Delete the file if it exists
         if os.path.exists(file_path):
@@ -710,8 +709,8 @@ async def assign_patient_to_pdf(pdf_id: int, request: Request):
         new_filename = f"custom_upload{upload_number}_{doctor_name}_{patient_name}.pdf"
         
         # Rename the file
-        old_path = os.path.join(UPLOAD_DIR, current_filename)
-        new_path = os.path.join(UPLOAD_DIR, new_filename)
+        old_path = os.path.join(UPLOADS_DIR, current_filename)
+        new_path = os.path.join(UPLOADS_DIR, new_filename)
         
         if os.path.exists(old_path):
             os.rename(old_path, new_path)
@@ -758,7 +757,7 @@ def delete_patient(patient_id: int):
         
         # Delete the patient's PDFs from the filesystem
         for pdf in associated_pdfs:
-            pdf_path = os.path.join(UPLOAD_DIR, pdf['filename'])
+            pdf_path = os.path.join(UPLOADS_DIR, pdf['filename'])
             try:
                 if os.path.exists(pdf_path):
                     os.remove(pdf_path)
@@ -834,7 +833,6 @@ async def create_patient(user_id: int, request: Request):
                 data.get('conditions', ''),
                 data.get('medications', '')
             )
-        )
         conn.commit()
         
         # Get the ID of the newly inserted patient
@@ -1469,9 +1467,7 @@ def ensure_db_schema():
 ensure_db_schema()
 
 # Run the server with uvicorn
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True)
+
 
 @app.get("/api/debug/html-content/{original_filename}")
 def debug_html_content(original_filename: str):
@@ -1624,53 +1620,118 @@ create_hospital_system_directories()
 @app.get("/api/user/{user_id}/templates")
 def get_user_templates(user_id: int):
     try:
+        print(f"Fetching templates for user ID: {user_id}")
+        
         # Create a new database connection for this request
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get the user's hospital system
-        cursor.execute("SELECT hospital_system FROM users WHERE id = ?", (user_id,))
+        # Check if the user exists
+        cursor.execute("SELECT id, name, email, hospital_system FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         
         if not user:
+            print(f"User with ID {user_id} not found")
             conn.close()
-            raise HTTPException(status_code=404, detail="User not found")
+            # Return empty templates instead of raising an error
+            return {
+                "hospitalSystem": "Unknown",
+                "templates": [],
+                "error": "User not found"
+            }
         
         hospital_system = user['hospital_system']
+        print(f"User's hospital system: {hospital_system}")
         
-        # Get all templates for this hospital system
+        if not hospital_system:
+            print(f"User with ID {user_id} has no hospital system")
+            conn.close()
+            return {
+                "hospitalSystem": "None",
+                "templates": [],
+                "error": "User has no hospital system"
+            }
+        
+        # Sanitize the hospital system name for use as a directory name
+        safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+        print(f"Sanitized hospital system: {safe_hospital_system}")
+        
+        # Path to the hospital system's HTML directory
+        hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
+        print(f"Looking for templates in: {hospital_dir}")
+        
+        # Get templates from the filesystem
+        template_files = []
+        if os.path.exists(hospital_dir):
+            print(f"Directory exists: {hospital_dir}")
+            for filename in os.listdir(hospital_dir):
+                if filename.endswith('.html'):
+                    file_path = os.path.join(hospital_dir, filename)
+                    print(f"Found HTML file: {filename}")
+                    
+                    # Get file stats
+                    file_stats = os.stat(file_path)
+                    
+                    # Get the original filename (remove .html extension)
+                    original_filename = os.path.splitext(filename)[0]
+                    
+                    # Create template object
+                    template = {
+                        "originalFilename": original_filename,
+                        "htmlFilename": filename,
+                        "createdAt": datetime.fromtimestamp(file_stats.st_ctime).isoformat(),
+                        "updatedAt": datetime.fromtimestamp(file_stats.st_mtime).isoformat()
+                    }
+                    
+                    template_files.append(template)
+        else:
+            print(f"Directory does not exist: {hospital_dir}")
+            # Create the directory
+            os.makedirs(hospital_dir, exist_ok=True)
+            print(f"Created directory: {hospital_dir}")
+        
+        # Also get templates from the database as a fallback
         cursor.execute(
             """
             SELECT original_filename, html_filename, created_at, updated_at
             FROM universal_pdfs
             WHERE hospital_system = ? AND html_filename IS NOT NULL
-            ORDER BY updated_at DESC
             """,
             (hospital_system,)
         )
         
-        templates = cursor.fetchall()
+        db_templates = cursor.fetchall()
         conn.close()
         
-        # Convert to a list of dictionaries
-        template_list = [
-            {
-                "originalFilename": template['original_filename'],
-                "htmlFilename": template['html_filename'],
-                "createdAt": template['created_at'],
-                "updatedAt": template['updated_at']
-            }
-            for template in templates
-        ]
+        # Add database templates that aren't already in the filesystem list
+        for db_template in db_templates:
+            original_filename = db_template['original_filename']
+            if not any(t['originalFilename'] == original_filename for t in template_files):
+                print(f"Adding template from database: {original_filename}")
+                template_files.append({
+                    "originalFilename": original_filename,
+                    "htmlFilename": db_template['html_filename'],
+                    "createdAt": db_template['created_at'],
+                    "updatedAt": db_template['updated_at']
+                })
         
+        # Sort templates by updated_at (most recent first)
+        template_files.sort(key=lambda x: x["updatedAt"], reverse=True)
+        
+        print(f"Total templates found: {len(template_files)}")
         return {
             "hospitalSystem": hospital_system,
-            "templates": template_list
+            "templates": template_files
         }
     except Exception as e:
         print(f"Error fetching templates: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch templates: {str(e)}")
+        # Return empty templates instead of raising an error
+        return {
+            "hospitalSystem": "Error",
+            "templates": [],
+            "error": str(e)
+        }
 
 @app.get("/api/user/{user_id}/filled-forms")
 def get_user_filled_forms(user_id: int):
@@ -1680,36 +1741,51 @@ def get_user_filled_forms(user_id: int):
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        # Get filled forms for this user with patient information
+        # Verify the user exists
+        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get all filled forms for this user
         cursor.execute(
             """
-            SELECT f.id, f.filled_filename, p.original_filename, f.created_at, 
-                   pat.id as patient_id, pat.name as patient_name
+            SELECT f.id, f.user_id, f.patient_id, f.pdf_id, f.filled_data, 
+                   f.filled_filename, f.created_at, p.name as patient_name,
+                   u.original_filename
             FROM filled_forms f
-            JOIN pdfs p ON f.pdf_id = p.id
-            JOIN patients pat ON f.patient_id = pat.id
+            LEFT JOIN patients p ON f.patient_id = p.id
+            LEFT JOIN uploaded_pdfs u ON f.pdf_id = u.id
             WHERE f.user_id = ?
             ORDER BY f.created_at DESC
             """,
             (user_id,)
         )
         
-        filled_forms = []
-        for row in cursor.fetchall():
-            form_data = {
-                "id": row['id'],
-                "filename": row['filled_filename'],
-                "originalFilename": row['original_filename'],
-                "uploadDate": row['created_at'],
-                "url": f"/uploads/{row['filled_filename']}",
-                "patientId": row['patient_id'],
-                "patientName": row['patient_name']
-            }
-            
-            filled_forms.append(form_data)
-        
+        forms = cursor.fetchall()
         conn.close()
-        return {"filledForms": filled_forms}
+        
+        # Convert to a list of dictionaries
+        filled_forms = [
+            {
+                "id": form['id'],
+                "userId": form['user_id'],
+                "patientId": form['patient_id'],
+                "pdfId": form['pdf_id'],
+                "filledData": form['filled_data'],
+                "filledFilename": form['filled_filename'],
+                "createdAt": form['created_at'],
+                "patientName": form['patient_name'],
+                "originalFilename": form['original_filename']
+            }
+            for form in forms
+        ]
+        
+        return {
+            "filledForms": filled_forms
+        }
     except Exception as e:
         print(f"Error fetching filled forms: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch filled forms: {str(e)}")
@@ -1783,4 +1859,170 @@ def delete_template(template_filename: str, user_id: int):
         return {"success": True, "message": f"Template '{template_filename}' deleted successfully"}
     except Exception as e:
         print(f"Error deleting template: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete template: {str(e)}") 
+        raise HTTPException(status_code=500, detail=f"Failed to delete template: {str(e)}")
+    
+@app.get("/api/debug/directory-contents")
+def debug_directory_contents():
+    """Debug endpoint to list all directories and files in HTML_OUTPUT_DIR"""
+    try:
+        # Check if HTML_OUTPUT_DIR exists
+        if not os.path.exists(HTML_OUTPUT_DIR):
+            return {
+                "error": f"HTML_OUTPUT_DIR does not exist: {HTML_OUTPUT_DIR}",
+                "current_directory": os.getcwd()
+            }
+        
+        # List all directories in HTML_OUTPUT_DIR
+        directories = []
+        for item in os.listdir(HTML_OUTPUT_DIR):
+            item_path = os.path.join(HTML_OUTPUT_DIR, item)
+            if os.path.isdir(item_path):
+                # List files in this directory
+                files = [f for f in os.listdir(item_path) if f.endswith('.html')]
+                directories.append({
+                    "directory": item,
+                    "path": item_path,
+                    "files": files,
+                    "file_count": len(files)
+                })
+        
+        # Also list files in the root HTML_OUTPUT_DIR
+        root_files = [f for f in os.listdir(HTML_OUTPUT_DIR) if os.path.isfile(os.path.join(HTML_OUTPUT_DIR, f)) and f.endswith('.html')]
+        
+        return {
+            "html_output_dir": HTML_OUTPUT_DIR,
+            "directories": directories,
+            "root_files": root_files,
+            "directory_count": len(directories),
+            "root_file_count": len(root_files)
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/debug/user-hospital-system/{user_id}")
+def debug_user_hospital_system(user_id: int):
+    """Debug endpoint to check a user's hospital system"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get the user's hospital system
+        cursor.execute("SELECT id, name, email, hospital_system FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        
+        if not user:
+            conn.close()
+            return {"error": "User not found", "user_id": user_id}
+        
+        hospital_system = user['hospital_system']
+        
+        # Sanitize the hospital system name
+        safe_hospital_system = re.sub(r'[^\w\s-]', '', hospital_system).strip().replace(' ', '_')
+        
+        # Path to the hospital system's HTML directory
+        hospital_dir = os.path.join(HTML_OUTPUT_DIR, safe_hospital_system)
+        
+        # Check if the directory exists
+        dir_exists = os.path.exists(hospital_dir)
+        
+        # List files in the directory if it exists
+        files = []
+        if dir_exists:
+            files = [f for f in os.listdir(hospital_dir) if f.endswith('.html')]
+        
+        conn.close()
+        
+        return {
+            "user_id": user['id'],
+            "user_name": user['name'],
+            "user_email": user['email'],
+            "hospital_system": hospital_system,
+            "safe_hospital_system": safe_hospital_system,
+            "hospital_dir": hospital_dir,
+            "dir_exists": dir_exists,
+            "html_files": files,
+            "file_count": len(files)
+        }
+    except Exception as e:
+        return {"error": str(e), "user_id": user_id}
+
+@app.get("/api/test")
+def test_endpoint():
+    """Simple test endpoint to verify the server is working"""
+    return {"status": "ok", "message": "API is working"}
+
+@app.get("/api/debug/database")
+def debug_database():
+    """Debug endpoint to check the database and tables"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Check if the users table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+        users_table_exists = cursor.fetchone() is not None
+        
+        # Get all users if the table exists
+        users = []
+        if users_table_exists:
+            cursor.execute("SELECT id, name, email, hospital_system FROM users")
+            users = [dict(user) for user in cursor.fetchall()]
+        
+        # Check if the universal_pdfs table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='universal_pdfs'")
+        universal_pdfs_table_exists = cursor.fetchone() is not None
+        
+        # Get all tables in the database
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = [table['name'] for table in cursor.fetchall()]
+        
+        conn.close()
+        
+        return {
+            "database_path": DB_PATH,
+            "database_exists": os.path.exists(DB_PATH),
+            "tables": tables,
+            "users_table_exists": users_table_exists,
+            "universal_pdfs_table_exists": universal_pdfs_table_exists,
+            "users": users,
+            "user_count": len(users)
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/api/user/{user_id}/templates-test")
+def get_user_templates_test(user_id: int):
+    """Simple test endpoint to verify the templates API is working"""
+    return {
+        "status": "ok",
+        "message": f"Templates API test for user {user_id} is working",
+        "user_id": user_id
+    }
+
+@app.get("/")
+def root():
+    """Root endpoint to verify the server is running"""
+    return {
+        "status": "ok",
+        "message": "Server is running",
+        "endpoints": [
+            "/api/test",
+            "/api/debug/database",
+            "/api/debug/directory-contents",
+            "/api/user/{user_id}/templates",
+            "/api/user/{user_id}/filled-forms"
+        ]
+    }
+
+if __name__ == "__main__":
+    # Create hospital system directories at startup
+    create_hospital_system_directories()
+    
+    # Initialize the database
+    init_db()
+    
+    # Run the FastAPI app with uvicorn on port 6969
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=6969)

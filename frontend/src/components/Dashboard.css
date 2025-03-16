@@ -1711,103 +1711,55 @@ textarea.patient-input {
 }
 
 .templates-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .template-item {
-  background: rgba(40, 40, 70, 0.5);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.template-item-info {
-  margin-bottom: 1rem;
-}
-
-.template-item-name {
-  color: white;
-  font-weight: 600;
-  margin-bottom: 5px;
-  word-break: break-word;
-}
-
-.template-item-date {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.8rem;
-}
-
-.use-template-button {
-  background: #4FFFB0;
-  color: #3B2B6D;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-weight: 600;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  align-self: flex-end;
+  transition: all 0.2s ease;
 }
 
-.use-template-button:hover {
-  background: #3ee69f;
+.template-item:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Add this to your existing CSS */
-.templates-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.template-item {
-  background: rgba(30, 30, 60, 0.5);
-  border: 1px solid rgba(79, 255, 176, 0.3);
-  border-radius: 0.5rem;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.template-item-header {
-  margin-bottom: 1rem;
-}
-
-.template-item-name {
-  color: white;
+.template-name {
   font-weight: 600;
-  margin-bottom: 0.5rem;
-  word-break: break-word;
+  margin-bottom: 4px;
 }
 
-.template-item-date {
-  color: rgba(255, 255, 255, 0.6);
+.template-date {
   font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.template-item-actions {
+.template-actions {
   display: flex;
-  justify-content: center;
-  gap: 0.5rem; /* Add gap between buttons */
-}
-
-.use-template {
-  background-color: #4FFFB0;
-  color: #3B2B6D;
+  justify-content: flex-end;
+  margin-top: 8px;
 }
 
 .delete-button {
-  background: rgba(255, 79, 79, 0.2) !important;
-  color: #ff4f4f !important;
-  border: 1px solid rgba(255, 79, 79, 0.4) !important;
+  background: rgba(255, 59, 48, 0.2);
+  color: #ff3b30;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
 }
 
 .delete-button:hover {
-  background: rgba(255, 79, 79, 0.3) !important;
+  background: rgba(255, 59, 48, 0.3);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.7);
 } 
